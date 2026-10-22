@@ -78,3 +78,17 @@ def test_wave_amplitude_frequency_and_phase_match_reference_equations():
         for time in (0, 0.37, 1.2):
             stack.sample(buffer, time)
             assert buffer.offsets[:, 1] == pytest.approx(amplitude * np.sin(angular_speed * time + indices), abs=0.00001)
+
+
+def test_curve_effects_sample_authored_tangents_wrap_and_character_phase_in_one_batch():
+    from math import pi
+    from infernux.graph.ramp import AnimationCurve, Keyframe
+    from infernux_text_animator import CurveTarget
+    curve = AnimationCurve((Keyframe(0, 0, out_tangent=1), Keyframe(1, 1, in_tangent=1)), post_wrap="ping_pong")
+    effect = Effect(EffectKind.Curve, amplitude=2, phase=pi/2, curve=curve, curve_target=CurveTarget.Rotation)
+    buffer = Buffer(4)
+    stack = EffectStack(4, [effect])
+    stack.sample(buffer, 0.5)
+    assert buffer.rotations == pytest.approx([1, 1.5, 2, 1.5])
+    stack.sample(buffer, 0.5)
+    assert buffer.rotations == pytest.approx([1, 1.5, 2, 1.5])

@@ -49,7 +49,17 @@
       "text_animator.pause": "Pause",
       "text_animator.play": "Play",
       "text_animator.select_hint": "Select an object with Text Animator. Configure effects in Inspector.",
-      "text_animator.edit_hint": "Stop Play mode to preview authored text."
+      "text_animator.edit_hint": "Stop Play mode to preview authored text.",
+      "text_animator.effect.curve": "Curve",
+      "text_animator.curve": "Curve",
+      "text_animator.curve_target": "Curve Target",
+      "text_animator.curve_target.offset_x": "Horizontal Offset",
+      "text_animator.curve_target.offset_y": "Vertical Offset",
+      "text_animator.curve_target.rotation": "Rotation",
+      "text_animator.curve_target.scale_x": "Horizontal Scale",
+      "text_animator.curve_target.scale_y": "Vertical Scale",
+      "text_animator.curve_target.scale": "Scale",
+      "text_animator.curve_target.alpha": "Alpha"
     },
     "zh": {
       "text_animator.kind": "效果",
@@ -99,7 +109,17 @@
       "text_animator.pause": "暂停",
       "text_animator.play": "继续",
       "text_animator.select_hint": "选中带有文字动画组件的物体，在 Inspector 中配置效果。",
-      "text_animator.edit_hint": "停止 Play 后可预览编辑中的文字。"
+      "text_animator.edit_hint": "停止 Play 后可预览编辑中的文字。",
+      "text_animator.effect.curve": "曲线",
+      "text_animator.curve": "曲线",
+      "text_animator.curve_target": "曲线目标",
+      "text_animator.curve_target.offset_x": "水平偏移",
+      "text_animator.curve_target.offset_y": "垂直偏移",
+      "text_animator.curve_target.rotation": "旋转",
+      "text_animator.curve_target.scale_x": "水平缩放",
+      "text_animator.curve_target.scale_y": "垂直缩放",
+      "text_animator.curve_target.scale": "缩放",
+      "text_animator.curve_target.alpha": "透明度"
     }
   }
 }

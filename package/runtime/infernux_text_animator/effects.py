@@ -16,6 +16,17 @@ class EffectKind(str, Enum):
     Swing = "swing"
     Alpha = "alpha"
     Color = "tint"
+    Curve = "curve"
+
+
+class CurveTarget(str, Enum):
+    OffsetX = "offset_x"
+    OffsetY = "offset_y"
+    Rotation = "rotation"
+    ScaleX = "scale_x"
+    ScaleY = "scale_y"
+    Scale = "scale"
+    Alpha = "alpha"
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,9 +40,15 @@ class Effect:
     seed: int = 0
     phase_offset: float = 0.0
     color: tuple = (1.0, 0.25, 0.25, 1.0)
+    curve: object = None
+    curve_target: CurveTarget = CurveTarget.OffsetY
 
     def __post_init__(self):
         object.__setattr__(self, "kind", EffectKind(self.kind))
+        object.__setattr__(self, "curve_target", CurveTarget(self.curve_target))
+        if self.kind == EffectKind.Curve and self.curve is None:
+            from infernux.graph.ramp import AnimationCurve
+            object.__setattr__(self, "curve", AnimationCurve(pre_wrap="repeat", post_wrap="repeat"))
         if self.start < 0 or (self.end is not None and self.end < self.start):
             raise ValueError("Effect range must be ordered and nonnegative")
         if not all(np.isfinite(v) for v in (self.amplitude, self.speed, self.phase, self.phase_offset)):
@@ -65,6 +82,9 @@ class EffectStack:
                 self._compiled.append((effect, selection, None))
                 continue
             phases = indices[selection] * effect.phase + effect.phase_offset
+            if effect.kind == EffectKind.Curve:
+                from .curves import CurveSampler
+                phases = (phases/(2*pi), CurveSampler(effect.curve))
             if effect.kind == EffectKind.Shake:
                 phases = np.random.default_rng(effect.seed).uniform(0, 2 * pi, (end - effect.start, 2)).astype(np.float32)
                 phases += effect.phase_offset
@@ -75,6 +95,20 @@ class EffectStack:
         for effect, selected, phases in self._compiled:
             if isinstance(effect, CustomEffect):
                 effect.evaluator(buffer, selected, time)
+                continue
+            if effect.kind == EffectKind.Curve:
+                offsets, curve = phases
+                value = curve(offsets+time*effect.speed)*effect.amplitude
+                if effect.curve_target in (CurveTarget.OffsetX, CurveTarget.OffsetY):
+                    buffer.offsets[selected, 0 if effect.curve_target == CurveTarget.OffsetX else 1] += value
+                elif effect.curve_target == CurveTarget.Rotation:
+                    buffer.rotations[selected] += value
+                elif effect.curve_target == CurveTarget.Scale:
+                    buffer.scales[selected] *= 1+value[:, None]
+                elif effect.curve_target in (CurveTarget.ScaleX, CurveTarget.ScaleY):
+                    buffer.scales[selected, 0 if effect.curve_target == CurveTarget.ScaleX else 1] *= 1+value
+                elif effect.curve_target == CurveTarget.Alpha:
+                    buffer.colors[selected, :, 3] *= np.clip(1-value[:, None], 0, 1)
                 continue
             phase = phases + time * effect.speed * 2 * pi
             wave = np.sin(phase)

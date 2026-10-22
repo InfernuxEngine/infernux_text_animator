@@ -4,8 +4,9 @@ from infernux.components import (
 )
 from infernux.ui import UIText
 from infernux.lib import SceneManager
+from infernux.graph.ramp import AnimationCurve
 
-from infernux_text_animator import Appearance, CharacterAppearance, Effect, EffectKind, TextAnimation, Typewriter
+from infernux_text_animator import Appearance, CharacterAppearance, CurveTarget, Effect, EffectKind, TextAnimation, Typewriter
 from infernux_text_animator.playback import scheduler
 from infernux.ui.ui_event import UIEvent, UIEvent1
 
@@ -22,10 +23,17 @@ class TextEffect(SerializableObject):
     seed: int = serialized_field(default=0, display_name_key="text_animator.seed")
     color: list = serialized_field(default=[1.0, 0.25, 0.25, 1.0], field_type=FieldType.COLOR,
                                   display_name_key="text_animator.color")
+    curve: AnimationCurve = serialized_field(default=AnimationCurve(pre_wrap="repeat", post_wrap="repeat"),
+                                              field_type=FieldType.ANIMATION_CURVE, display_name_key="text_animator.curve",
+                                              visible_when=lambda e: e.kind == EffectKind.Curve)
+    curve_target: CurveTarget = serialized_field(default=CurveTarget.OffsetY, display_name_key="text_animator.curve_target",
+                                                  enum_labels=["text_animator.curve_target."+v.value for v in CurveTarget],
+                                                  visible_when=lambda e: e.kind == EffectKind.Curve)
 
     def build(self):
         return Effect(self.kind, self.amplitude, self.speed, self.phase,
-                      self.start, None if self.end == -1 else self.end, self.seed, self.phase_offset, tuple(self.color))
+                      self.start, None if self.end == -1 else self.end, self.seed, self.phase_offset, tuple(self.color),
+                      self.curve if self.kind == EffectKind.Curve else None, self.curve_target)
 
 
 class TextPreset(SerializableObject):

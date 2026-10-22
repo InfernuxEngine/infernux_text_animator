@@ -10,8 +10,7 @@ under verification in the engine. No public plugin release is available yet.
 provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,
 grapheme/word typing, nested tags, marker events, appearance/disappearance and
 manual character editing. `TextAnimator` uses native serialized lists and nested
-appearance settings. Curve authoring and the remaining product/platform checks
-are still in progress.
+appearance settings. The remaining product/platform checks are still in progress.
 
 ```python
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
@@ -40,6 +39,10 @@ to render them. `<event=bell/>` emits a marker; `<wait=0.5/>` pauses the writer.
 Markers preserve source order, including when a frame crosses several letters.
 `SkipTypewriter(trigger_events=False)` skips remaining marker and character callbacks.
 Named effect presets can be configured in the Inspector or supplied as a mapping.
+The Curve effect uses the native curve editor for offsets, rotation, scale or
+alpha. Hermite tangents and clamp/repeat/ping-pong wrapping are compiled once;
+character phases are sampled in one vectorized batch. Named presets retain
+their curve when used as nested tags.
 
 `CharacterAnimator(text)` owns one Manual-layer buffer. Select `Character(i)`,
 `Range(start, count)`, `Word(i)` or `Line(i)`, then set offset, rotation, scale,
