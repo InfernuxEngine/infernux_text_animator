@@ -1,6 +1,6 @@
 from infernux.components import FieldType, get_serialized_fields
 
-from TextAnimator import TextAnimator, TextEffect
+from TextAnimator import TextAnimator, TextEffect, TextPreset
 from infernux_text_animator import EffectKind
 
 
@@ -16,3 +16,6 @@ def test_effect_list_uses_native_serialization_and_independent_instances():
     effect = restored.build()
     assert (effect.kind, effect.amplitude, effect.start, effect.end) == (EffectKind.Swing, 12, 2, 6)
     assert TextEffect().build().end is None
+    preset = TextPreset(name="warning", effect=setting)
+    decoded = TextPreset._deserialize(preset._serialize())
+    assert decoded.name == "warning" and decoded.effect.build().kind == EffectKind.Swing

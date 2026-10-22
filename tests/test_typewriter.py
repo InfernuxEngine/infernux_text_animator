@@ -100,3 +100,11 @@ def test_word_hiding_uses_reversed_boundaries_and_partial_word():
 def test_invalid_speed_is_reported_before_playback():
     with pytest.raises(ValueError, match="speed"):
         Typewriter(text_fixture(["A"]), characters_per_second=0).ShowText()
+
+
+def test_skip_does_not_replay_events_or_hide_text_when_resumed():
+    text = text_fixture(list("Hello"))
+    writer, completed = Typewriter(text), []
+    writer.on_complete = lambda: completed.append(True)
+    writer.ShowText().SkipTypewriter().StartShowingText().Update(1)
+    assert text.max_visible_characters == 5 and completed == [True]

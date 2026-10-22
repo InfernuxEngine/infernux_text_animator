@@ -7,10 +7,11 @@ Project-script imports additionally need the preload-library import fix currentl
 under verification in the engine. No public plugin release is available yet.
 
 **In development.** No public plugin version is advertised yet. The current core
-provides batch wave, shake, wiggle, bounce, pulse, swing and alpha effects, plus
-grapheme/word typewriter playback and a `TextAnimator` component using the engine's
-native serialized effect list. Effect tags, appearance animation, presets and the
-remaining product/platform checks are in progress.
+provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,
+grapheme/word typing, nested tags, marker events, appearance/disappearance and
+manual character editing. `TextAnimator` uses native serialized lists and nested
+appearance settings. Editor preview, curve authoring and the remaining
+product/platform checks are still in progress.
 
 ```python
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
@@ -30,6 +31,31 @@ geometry every frame, use one batch buffer per text, and preserve the separate
 manual and appearance layers. There are no per-character GameObjects or tweens.
 Word playback preserves the configured characters-per-second rate; reverse hiding
 removes whole words from the visible end, including partially shown words.
+
+Enable animation tags with `TextAnimation(text, parse_tags=True)` or the component's
+Parse Tags setting. For example:
+`<wave amplitude=2 speed=0.6>Hello <shake seed=7>世界</shake></wave>`.
+Native `<color>` and `<size>` tags remain separate: enable `UIText.rich_text`
+to render them. `<event=bell/>` emits a marker; `<wait=0.5/>` pauses the writer.
+Markers preserve source order, including when a frame crosses several letters.
+`SkipTypewriter(trigger_events=False)` skips remaining marker and character callbacks.
+Named effect presets can be configured in the Inspector or supplied as a mapping.
+
+`CharacterAnimator(text)` owns one Manual-layer buffer. Select `Character(i)`,
+`Range(start, count)`, `Word(i)` or `Line(i)`, then set offset, rotation, scale,
+skew, corner offsets, RGBA or alpha and call `Apply()` once. Refresh selections
+after layout changes. `CustomEffect(evaluator)` supplies a whole-range batch
+callback; it creates no per-character objects.
+
+`CharacterAppearance(text, Appearance(...))` writes only the Appearance layer.
+Fade, scale, offset, rotation, vertex expansion and seeded random direction can
+be combined. The component coordinates appearances with typewriter timestamps;
+disappearing glyphs stay drawable until their animation finishes. Pausing stops
+all three layers' playback. `on_character` carries `(index, grapheme)`;
+`on_event` carries marker names. `on_complete` marks typing completion,
+`on_hidden` waits for the outgoing visual animation, and `on_visual_complete`
+marks a completed appearance pass. An optional existing AudioSource plays typing
+sounds. Disable/unload restores authored text and visibility.
 
 Add **Animation / Text Animator** to a `UIText` object to configure effects,
 playback and typewriter settings in the Inspector. Disabling the component clears

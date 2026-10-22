@@ -10,9 +10,10 @@ def test_component_callback_disables_after_typing_and_unload_restores_state(monk
     scheduler, activity, resets = PlaybackScheduler(), [], []
     scheduler.on_activity = activity.append
     monkeypatch.setattr(component_module, "scheduler", scheduler)
-    text = SimpleNamespace(max_visible_characters=2)
-    animation = SimpleNamespace(text=text, Reset=lambda: resets.append("reset"))
-    writer = SimpleNamespace(playing=True, StopShowingText=lambda: setattr(writer, "playing", False))
+    text = SimpleNamespace(max_visible_characters=2, text="hello")
+    animation = SimpleNamespace(text=text, Reset=lambda: resets.append("reset"), has_effects=False,
+                                Refresh=lambda: False, source_text="hello")
+    writer = SimpleNamespace(playing=True, StopShowingText=lambda: setattr(writer, "playing", False), _generation=0)
     writer.Update = lambda delta: setattr(writer, "playing", False)
     component = TextAnimator()
     component._animation, component._writer = animation, writer
