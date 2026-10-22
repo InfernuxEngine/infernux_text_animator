@@ -26,12 +26,13 @@ class Effect:
     start: int = 0
     end: int | None = None
     seed: int = 0
+    phase_offset: float = 0.0
 
     def __post_init__(self):
         object.__setattr__(self, "kind", EffectKind(self.kind))
         if self.start < 0 or (self.end is not None and self.end < self.start):
             raise ValueError("Effect range must be ordered and nonnegative")
-        if not all(np.isfinite(v) for v in (self.amplitude, self.speed, self.phase)):
+        if not all(np.isfinite(v) for v in (self.amplitude, self.speed, self.phase, self.phase_offset)):
             raise ValueError("Effect parameters must be finite")
 
 
@@ -45,9 +46,10 @@ class EffectStack:
             if end > character_count or effect.start > character_count:
                 raise ValueError("Effect range exceeds the text character count")
             selection = slice(effect.start, end)
-            phases = indices[selection] * effect.phase
+            phases = indices[selection] * effect.phase + effect.phase_offset
             if effect.kind == EffectKind.Shake:
                 phases = np.random.default_rng(effect.seed).uniform(0, 2 * pi, (end - effect.start, 2)).astype(np.float32)
+                phases += effect.phase_offset
             self._compiled.append((effect, selection, phases))
 
     def sample(self, buffer, time):
@@ -91,14 +93,18 @@ class TextAnimation:
         layout = self.text.get_text_layout()
         if layout is self._layout:
             return False
-        self._layout = layout
-        self._buffer = self.text.create_character_buffer()
-        self._stack = EffectStack(self._buffer.character_count, self.effects)
+        buffer = self.text.create_character_buffer()
+        stack = EffectStack(buffer.character_count, self.effects)
+        self._layout, self._buffer, self._stack = layout, buffer, stack
         return True
 
     def SetEffects(self, effects):
-        self.effects = tuple(effects)
-        self._stack = EffectStack(self._buffer.character_count, self.effects)
+        effects = tuple(effects)
+        layout = self.text.get_text_layout()
+        buffer = self._buffer if layout is self._layout else self.text.create_character_buffer()
+        stack = EffectStack(buffer.character_count, effects)
+        self.effects = effects
+        self._layout, self._buffer, self._stack = layout, buffer, stack
         return self
 
     def Sample(self, time):

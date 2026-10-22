@@ -2,10 +2,10 @@ from infernux.components import (
     FieldType, InxComponent, SerializableObject, add_component_menu,
     disallow_multiple, list_field, require_component, serialized_field,
 )
-from infernux.timing import Time
 from infernux.ui import UIText
 
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
+from infernux_text_animator.playback import scheduler
 
 
 class TextEffect(SerializableObject):
@@ -13,13 +13,14 @@ class TextEffect(SerializableObject):
     amplitude: float = serialized_field(default=8.0, display_name_key="text_animator.amplitude")
     speed: float = serialized_field(default=1.0, display_name_key="text_animator.speed")
     phase: float = serialized_field(default=0.6, display_name_key="text_animator.phase")
+    phase_offset: float = serialized_field(default=0.0, display_name_key="text_animator.phase_offset")
     start: int = serialized_field(default=0, range=(0, 100000), slider=False, display_name_key="text_animator.range_start")
     end: int = serialized_field(default=-1, range=(-1, 100000), slider=False, display_name_key="text_animator.range_end")
     seed: int = serialized_field(default=0, display_name_key="text_animator.seed")
 
     def build(self):
         return Effect(self.kind, self.amplitude, self.speed, self.phase,
-                      self.start, None if self.end == -1 else self.end, self.seed)
+                      self.start, None if self.end == -1 else self.end, self.seed, self.phase_offset)
 
 
 @require_component(UIText)
@@ -54,37 +55,60 @@ class TextAnimator(InxComponent):
         self._playing = self.auto_play
         if self.typewriter and self.auto_play:
             self._writer.ShowText()
+        self._schedule()
 
-    def update(self, delta_time):
-        if not self._playing:
-            return
-        delta = Time.unscaled_delta_time if self.unscaled_time else delta_time
+    def _schedule(self):
+        if self._playing and (self.effects or self._writer.playing):
+            scheduler.add(self)
+        else:
+            scheduler.remove(self)
+
+    def _tick(self, delta_time, unscaled_delta):
+        delta = unscaled_delta if self.unscaled_time else delta_time
         if self.effects:
             self._animation.Update(delta)
         if self._writer.playing:
             self._writer.Update(delta)
+        self._schedule()
+
+    def on_validate(self):
+        if self._animation is not None:
+            self._animation.SetEffects([effect.build() for effect in self.effects])
+            self._writer.characters_per_second = self.characters_per_second
+            self._writer.punctuation_pause = self.punctuation_pause
+            self._writer.whitespace_pause = self.whitespace_pause
+            self._writer.by_word = self.by_word
+            self._schedule()
 
     def on_disable(self):
         self._playing = False
+        scheduler.remove(self)
         if self._animation is not None:
             self._animation.Reset()
             if self.typewriter:
                 self._animation.text.max_visible_characters = self._previous_visible_count
             self._writer.StopShowingText()
+            self._animation = self._writer = None
 
     def Play(self):
+        if self._animation is None:
+            raise RuntimeError("Enable TextAnimator before playback")
         self._playing = True
+        self._schedule()
         return self
 
     def Pause(self):
         self._playing = False
+        self._schedule()
         return self
 
     def ShowText(self, value=None):
         self._writer.ShowText(value)
         self._playing = True
+        self._schedule()
         return self
 
     def SkipTypewriter(self, trigger_events=False):
         self._writer.SkipTypewriter(trigger_events)
+        self._schedule()
         return self

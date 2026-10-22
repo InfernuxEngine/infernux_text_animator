@@ -65,3 +65,16 @@ def test_text_animation_rebuilds_buffers_only_when_native_layout_changes():
     layout = SimpleNamespace()
     animation.Sample(0.3)
     assert samples[-1][0] is not samples[0][0]
+
+
+def test_wave_amplitude_frequency_and_phase_match_reference_equations():
+    from math import pi
+
+    buffer = Buffer(8)
+    indices = np.arange(1, 9)
+    for amplitude, angular_speed in ((2.0, 4.0), (0.75, 3.0), (0.5, 3.0), (0.25, 2.0)):
+        stack = EffectStack(8, [Effect(amplitude=amplitude, speed=angular_speed / (2 * pi),
+                                       phase=1.0, phase_offset=1.0)])
+        for time in (0, 0.37, 1.2):
+            stack.sample(buffer, time)
+            assert buffer.offsets[:, 1] == pytest.approx(amplitude * np.sin(angular_speed * time + indices), abs=0.00001)

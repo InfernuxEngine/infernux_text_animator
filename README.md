@@ -34,6 +34,10 @@ removes whole words from the visible end, including partially shown words.
 Add **Animation / Text Animator** to a `UIText` object to configure effects,
 playback and typewriter settings in the Inspector. Disabling the component clears
 its effects layer and restores the previous visibility limit.
+Components share one owned engine callback. Paused, empty or completed typewriters
+leave that callback inactive; each component does not carry an idle Update call.
+Effect speed is cycles per second, `phase` is radians between characters and
+`phase_offset` sets the initial phase. The animation always samples from rest data.
 
 Develop with CPython 3.13: install `sdk-requirements.txt`, run `python -m pytest`,
 then `python package.py`. Only `package/` enters the `.inxpkg`. Installed users
