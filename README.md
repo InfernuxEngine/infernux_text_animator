@@ -10,8 +10,8 @@ under verification in the engine. No public plugin release is available yet.
 provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,
 grapheme/word typing, nested tags, marker events, appearance/disappearance and
 manual character editing. `TextAnimator` uses native serialized lists and nested
-appearance settings. Editor preview, curve authoring and the remaining
-product/platform checks are still in progress.
+appearance settings. Curve authoring and the remaining product/platform checks
+are still in progress.
 
 ```python
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
@@ -60,6 +60,10 @@ sounds. Disable/unload restores authored text and visibility.
 Add **Animation / Text Animator** to a `UIText` object to configure effects,
 playback and typewriter settings in the Inspector. Disabling the component clears
 its effects layer and restores the previous visibility limit.
+In Edit mode, open **Animation / Text Animator** and select the object to preview,
+pause or stop and restore. Preview does not emit gameplay events or play typing
+audio. Save, Undo, changing selection and entering Play close the preview and
+restore authored text before the editor operation continues.
 Components share one owned engine callback. Paused, empty or completed typewriters
 leave that callback inactive; each component does not carry an idle Update call.
 Effect speed is cycles per second, `phase` is radians between characters and

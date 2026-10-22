@@ -23,5 +23,7 @@ Offsets use local text coordinates, with positive Y pointing down.
 
 Add **Animation / Text Animator** to a UIText to edit the native serialized effect
 list and typewriter settings. Components share one update entry; paused, empty or
-completed playback disables idle work. Effect tags and appearance presets remain
-in progress.
+completed playback disables idle work. Open **Animation / Text Animator** in Edit
+mode to preview the selected component. Stop restores authored text; Save, Undo,
+selection changes and entering Play also end previews before proceeding. Preview
+does not send gameplay events or play typing sounds.
