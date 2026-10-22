@@ -3,6 +3,7 @@ from infernux.components import (
     disallow_multiple, require_component, serialized_field,
 )
 from infernux.ui import UIText
+from infernux.lib import SceneManager
 
 from infernux_text_animator import Appearance, CharacterAppearance, Effect, EffectKind, TextAnimation, Typewriter
 from infernux_text_animator.playback import scheduler
@@ -103,6 +104,8 @@ class TextAnimator(InxComponent):
     def on_visual_complete(self): return self._event("_visual_event", UIEvent)
 
     def on_enable(self):
+        if not self._preview and not SceneManager.instance().is_playing():
+            return
         text = self.game_object.get_component(UIText)
         self._previous_visible_count = text.max_visible_characters
         self._animation = TextAnimation(text, [effect.build() for effect in self.effects], parse_tags=self.parse_tags,

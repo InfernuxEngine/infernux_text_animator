@@ -22,6 +22,9 @@ class TextAnimatorPanel(EditorPanel):
         self._component = None
         self._scope = None
 
+    def _initial_size(self):
+        return (440, 180)
+
     def on_enable(self):
         SelectionService.instance().add_listener(self._selection_changed)
         self.services.play_mode_manager.add_state_change_listener(self._selection_changed)

@@ -17,6 +17,7 @@ def component(monkeypatch):
     text.get_text_layout = text_fixture(list(text.text)).get_text_layout
     scheduler = PlaybackScheduler()
     monkeypatch.setattr(module, 'scheduler', scheduler)
+    monkeypatch.setattr(module, 'SceneManager', SimpleNamespace(instance=lambda: SimpleNamespace(is_playing=lambda: True)))
     monkeypatch.setattr(TextAnimator, 'game_object', property(lambda _: SimpleNamespace(get_component=lambda _kind: text)))
     animator = TextAnimator()
     animator.typewriter = animator.animate_appearance = True
@@ -66,3 +67,12 @@ def test_manual_play_starts_a_component_with_auto_play_disabled(component):
     assert not scheduler._active and text.max_visible_characters == 2
     animator.Play()
     assert scheduler._active and text.max_visible_characters == 1
+
+
+def test_edit_mode_enable_keeps_authored_text_and_registers_no_playback(component, monkeypatch):
+    import TextAnimator as module
+    animator, text, scheduler = component
+    monkeypatch.setattr(module, 'SceneManager', SimpleNamespace(instance=lambda: SimpleNamespace(is_playing=lambda: False)))
+    animator.on_enable()
+    assert animator._animation is None and not scheduler._active
+    assert text.text == 'A中BC' and text.max_visible_characters == 2
