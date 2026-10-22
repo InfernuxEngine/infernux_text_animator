@@ -81,6 +81,10 @@ class TextAnimator(InxComponent):
     _previous_visible_count = -1
     _appearance = None
     _hidden_pending = False
+    _preview = False
+    _preview_registration = None
+    _sound = None
+    _started_playback = False
 
     def _event(self, name, kind):
         if name not in self.__dict__:
@@ -108,33 +112,36 @@ class TextAnimator(InxComponent):
                                   by_word=self.by_word)
         self._writer.cues = self._animation.cues
         self._sound = None
-        if self.character_audio is not None:
+        if self.character_audio is not None and not self._preview:
             from infernux.components.builtin import AudioSource
             self._sound = self.character_audio.get_component(AudioSource)
             if self._sound is None:
                 raise ValueError("Character audio object needs an AudioSource")
         self._writer.on_character = self._character_shown
-        self._writer.on_event = self.on_event.invoke
-        self._writer.on_complete = self.on_complete.invoke
+        self._writer.on_event = lambda value: self._emit(self.on_event, value)
+        self._writer.on_complete = lambda: self._emit(self.on_complete)
         self._writer.on_hidden = self._finished_hiding
         self._writer.on_character_hidden = self._character_hidden
         self._hidden_pending = False
         self._appearance = CharacterAppearance(text, self.appearance.build()) if self.animate_appearance else None
         if self._appearance is not None:
             self._writer.visibility_handler = self._publish_visibility
-        self._playing = self.auto_play
-        if self.typewriter and self.auto_play:
-            self.ShowText()
-        elif self._appearance is not None and self.auto_play:
-            self._appearance.Play(stagger=self.appearance_stagger)
-        self._schedule()
+        self._playing = self._started_playback = False
+        if self.auto_play:
+            self.Play()
+        else:
+            self._schedule()
 
     def _character_shown(self, index, character):
         if self._appearance is not None:
             self._appearance.Character(index, at=self._writer.event_time)
         if self._sound is not None and not character.isspace() and index % self.characters_per_sound == 0:
             self._sound.play()
-        self.on_character.invoke((index, character))
+        self._emit(self.on_character, (index, character))
+
+    def _emit(self, event, *arguments):
+        if not self._preview:
+            event.invoke(*arguments)
 
     def _character_hidden(self, index, character):
         if self._appearance is not None:
@@ -147,11 +154,15 @@ class TextAnimator(InxComponent):
         if self._appearance is not None and self._appearance.active:
             self._hidden_pending = True
         else:
-            self.on_hidden.invoke()
+            self._emit(self.on_hidden)
 
     def _schedule(self):
-        if self._playing and (self._animation.has_effects or self._writer.playing or
-                              (self._appearance is not None and self._appearance.active)):
+        active = self._playing and ((self._animation.has_effects and self._animation.text.max_visible_characters != 0)
+                                   or self._writer.playing or (self._appearance is not None and self._appearance.active))
+        if self._preview:
+            if self._preview_registration is not None:
+                self._preview_registration.enabled = active
+        elif active:
             scheduler.add(self)
         else:
             scheduler.remove(self)
@@ -183,8 +194,8 @@ class TextAnimator(InxComponent):
                 if self._hidden_pending:
                     self._hidden_pending = False
                     self._animation.text.max_visible_characters = 0
-                    self.on_hidden.invoke()
-                self.on_visual_complete.invoke()
+                    self._emit(self.on_hidden)
+                self._emit(self.on_visual_complete)
                 if self._animation is not animation:
                     return
         self._schedule()
@@ -222,6 +233,14 @@ class TextAnimator(InxComponent):
     def Play(self):
         if self._animation is None:
             raise RuntimeError("Enable TextAnimator before playback")
+        if not self._started_playback:
+            self._started_playback = True
+            if self.typewriter:
+                self.ShowText()
+            elif self._appearance is not None:
+                self._appearance.Play(stagger=self.appearance_stagger)
+            if self._animation is None:
+                return self
         self._playing = True
         self._schedule()
         return self
@@ -232,6 +251,7 @@ class TextAnimator(InxComponent):
         return self
 
     def ShowText(self, value=None):
+        self._started_playback = True
         if value is not None:
             self._animation.SetText(value)
         self._writer.cues = self._animation.cues
@@ -258,11 +278,12 @@ class TextAnimator(InxComponent):
                 self._animation.text.max_visible_characters = 0
                 if self._hidden_pending:
                     self._hidden_pending = False
-                    self.on_hidden.invoke()
+                    self._emit(self.on_hidden)
         self._schedule()
         return self
 
     def StartDisappearingText(self):
+        self._started_playback = True
         if self._appearance is not None:
             self._appearance.RebaseTime(0)
         self._writer.StartDisappearingText()
@@ -276,6 +297,23 @@ class TextAnimator(InxComponent):
         if self._appearance is None:
             raise RuntimeError("Enable appearance animation in the Inspector first")
         self._appearance.Play(showing, stagger=self.appearance_stagger)
+        self._started_playback = True
         self._playing = True
+        self._schedule()
+        return self
+
+    def BeginPreview(self, scope):
+        if self._animation is not None:
+            raise RuntimeError("Stop the active playback before starting an editor preview")
+        text = self.game_object.get_component(UIText)
+        scope.capture(self, "_preview", "_preview_registration", "_playing", "_animation", "_writer",
+                      "_appearance", "_previous_visible_count", "_hidden_pending", "_sound", "_started_playback")
+        scope.capture_text(text)
+        scope.capture(text, "text")
+        self._preview = True
+        self.on_enable()
+        if not self._playing:
+            self.Play()
+        self._preview_registration = scope.add_update(lambda dt: self._tick(dt, dt))
         self._schedule()
         return self

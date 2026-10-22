@@ -57,3 +57,12 @@ def test_character_callback_can_disable_the_component_without_stale_work(compone
     scheduler.Update(0.15, 0.15)
     assert animator._animation is animator._writer is None
     assert not scheduler._active and text.max_visible_characters == 2
+
+
+def test_manual_play_starts_a_component_with_auto_play_disabled(component):
+    animator, text, scheduler = component
+    animator.auto_play = False
+    animator.on_enable()
+    assert not scheduler._active and text.max_visible_characters == 2
+    animator.Play()
+    assert scheduler._active and text.max_visible_characters == 1

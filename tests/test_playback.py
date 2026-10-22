@@ -18,6 +18,7 @@ def test_component_callback_disables_after_typing_and_unload_restores_state(monk
     component = TextAnimator()
     component._animation, component._writer = animation, writer
     component.typewriter = True
+    component._started_playback = True
     component.Play()
     assert activity == [True]
     scheduler.Update(0.1, 0.2)

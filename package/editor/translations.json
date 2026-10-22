@@ -42,7 +42,14 @@
       "text_animator.effect.pulse": "Pulse",
       "text_animator.effect.swing": "Swing",
       "text_animator.effect.alpha": "Alpha",
-      "text_animator.effect.tint": "Tint"
+      "text_animator.effect.tint": "Tint",
+      "text_animator.panel": "Text Animator",
+      "text_animator.preview": "Preview",
+      "text_animator.stop_restore": "Stop and Restore",
+      "text_animator.pause": "Pause",
+      "text_animator.play": "Play",
+      "text_animator.select_hint": "Select an object with Text Animator. Configure effects in Inspector.",
+      "text_animator.edit_hint": "Stop Play mode to preview authored text."
     },
     "zh": {
       "text_animator.kind": "效果",
@@ -85,7 +92,14 @@
       "text_animator.effect.pulse": "脉冲",
       "text_animator.effect.swing": "摆动",
       "text_animator.effect.alpha": "透明度波动",
-      "text_animator.effect.tint": "颜色波动"
+      "text_animator.effect.tint": "颜色波动",
+      "text_animator.panel": "文字动画",
+      "text_animator.preview": "预览",
+      "text_animator.stop_restore": "停止并恢复",
+      "text_animator.pause": "暂停",
+      "text_animator.play": "继续",
+      "text_animator.select_hint": "选中带有文字动画组件的物体，在 Inspector 中配置效果。",
+      "text_animator.edit_hint": "停止 Play 后可预览编辑中的文字。"
     }
   }
 }
