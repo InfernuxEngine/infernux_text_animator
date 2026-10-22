@@ -59,7 +59,11 @@
       "text_animator.curve_target.scale_x": "Horizontal Scale",
       "text_animator.curve_target.scale_y": "Vertical Scale",
       "text_animator.curve_target.scale": "Scale",
-      "text_animator.curve_target.alpha": "Alpha"
+      "text_animator.curve_target.alpha": "Alpha",
+      "text_animator.group.effects": "Effects",
+      "text_animator.group.playback": "Playback",
+      "text_animator.group.typewriter": "Typewriter",
+      "text_animator.group.appearance": "Appearance"
     },
     "zh": {
       "text_animator.kind": "效果",
@@ -119,7 +123,11 @@
       "text_animator.curve_target.scale_x": "水平缩放",
       "text_animator.curve_target.scale_y": "垂直缩放",
       "text_animator.curve_target.scale": "缩放",
-      "text_animator.curve_target.alpha": "透明度"
+      "text_animator.curve_target.alpha": "透明度",
+      "text_animator.group.effects": "效果",
+      "text_animator.group.playback": "播放",
+      "text_animator.group.typewriter": "打字机",
+      "text_animator.group.appearance": "出入场"
     }
   }
 }

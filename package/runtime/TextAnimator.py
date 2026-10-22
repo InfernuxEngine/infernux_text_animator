@@ -61,28 +61,28 @@ class TextAppearance(SerializableObject):
 @add_component_menu("Animation/Text Animator")
 class TextAnimator(InxComponent):
     effects: list = serialized_field(default=[], field_type=FieldType.LIST, element_type=FieldType.SERIALIZABLE_OBJECT,
-                                     element_class=TextEffect, group="Effects", display_name_key="text_animator.effects")
+                                     element_class=TextEffect, group="text_animator.group.effects", display_name_key="text_animator.effects")
     presets: list = serialized_field(default=[], field_type=FieldType.LIST, element_type=FieldType.SERIALIZABLE_OBJECT,
-                                     element_class=TextPreset, group="Effects", display_name_key="text_animator.presets")
-    parse_tags: bool = serialized_field(default=True, group="Effects", display_name_key="text_animator.parse_tags")
-    auto_play: bool = serialized_field(default=True, group="Playback", display_name_key="text_animator.auto_play")
-    unscaled_time: bool = serialized_field(default=False, group="Playback", display_name_key="text_animator.unscaled_time")
-    typewriter: bool = serialized_field(default=False, group="Typewriter", display_name_key="text_animator.typewriter")
-    characters_per_second: float = serialized_field(default=30.0, range=(0.1, 1000.0), group="Typewriter",
+                                     element_class=TextPreset, group="text_animator.group.effects", display_name_key="text_animator.presets")
+    parse_tags: bool = serialized_field(default=True, group="text_animator.group.effects", display_name_key="text_animator.parse_tags")
+    auto_play: bool = serialized_field(default=True, group="text_animator.group.playback", display_name_key="text_animator.auto_play")
+    unscaled_time: bool = serialized_field(default=False, group="text_animator.group.playback", display_name_key="text_animator.unscaled_time")
+    typewriter: bool = serialized_field(default=False, group="text_animator.group.typewriter", display_name_key="text_animator.typewriter")
+    characters_per_second: float = serialized_field(default=30.0, range=(0.1, 1000.0), group="text_animator.group.typewriter",
                                                     display_name_key="text_animator.characters_per_second")
-    punctuation_pause: float = serialized_field(default=0.15, range=(0.0, 10.0), group="Typewriter",
+    punctuation_pause: float = serialized_field(default=0.15, range=(0.0, 10.0), group="text_animator.group.typewriter",
                                                display_name_key="text_animator.punctuation_pause")
-    whitespace_pause: float = serialized_field(default=0.0, range=(0.0, 10.0), group="Typewriter",
+    whitespace_pause: float = serialized_field(default=0.0, range=(0.0, 10.0), group="text_animator.group.typewriter",
                                               display_name_key="text_animator.whitespace_pause")
-    by_word: bool = serialized_field(default=False, group="Typewriter", display_name_key="text_animator.by_word")
-    character_audio = serialized_field(default=None, field_type=FieldType.GAME_OBJECT, group="Typewriter",
+    by_word: bool = serialized_field(default=False, group="text_animator.group.typewriter", display_name_key="text_animator.by_word")
+    character_audio = serialized_field(default=None, field_type=FieldType.GAME_OBJECT, group="text_animator.group.typewriter",
                                         required_component="AudioSource",
                                         display_name_key="text_animator.character_audio")
-    characters_per_sound: int = serialized_field(default=1, range=(1, 1000), group="Typewriter",
+    characters_per_sound: int = serialized_field(default=1, range=(1, 1000), group="text_animator.group.typewriter",
                                                  display_name_key="text_animator.characters_per_sound")
-    animate_appearance: bool = serialized_field(default=False, group="Appearance", display_name_key="text_animator.animate_appearance")
-    appearance: TextAppearance = serialized_field(default=TextAppearance(), group="Appearance", display_name_key="text_animator.appearance")
-    appearance_stagger: float = serialized_field(default=0.03, range=(0.0, 10), group="Appearance", display_name_key="text_animator.stagger")
+    animate_appearance: bool = serialized_field(default=False, group="text_animator.group.appearance", display_name_key="text_animator.animate_appearance")
+    appearance: TextAppearance = serialized_field(default=TextAppearance(), group="text_animator.group.appearance", display_name_key="text_animator.appearance")
+    appearance_stagger: float = serialized_field(default=0.03, range=(0.0, 10), group="text_animator.group.appearance", display_name_key="text_animator.stagger")
 
     _animation = None
     _writer = None
