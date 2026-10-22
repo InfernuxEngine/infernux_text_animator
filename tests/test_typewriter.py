@@ -69,12 +69,32 @@ def test_word_mode_and_empty_text_complete_once():
     writer.ShowText()
     assert text.max_visible_characters == 2
     writer.Update(0.2)
+    assert text.max_visible_characters == 3
+    writer.Update(0.11)
     assert text.max_visible_characters == 5
     empty = Typewriter(text_fixture([]))
     events = []
     empty.on_complete = lambda: events.append("complete")
     empty.ShowText().Update(0)
     assert events == ["complete"]
+
+
+def test_word_hiding_uses_reversed_boundaries_and_partial_word():
+    text = text_fixture(list("A longer"), [0, None, 1, 1, 1, 1, 1, 1])
+    writer = Typewriter(text, characters_per_second=10, by_word=True)
+    writer.StartDisappearingText()
+    assert text.max_visible_characters == 2
+    writer.Update(0.59)
+    assert text.max_visible_characters == 2
+    writer.Update(0.02)
+    assert text.max_visible_characters == 1
+    writer.Update(0.11)
+    assert text.max_visible_characters == 0 and not writer.playing
+    text.max_visible_characters = 4
+    writer.StartDisappearingText()
+    assert text.max_visible_characters == 2
+    writer.Update(1)
+    assert text.max_visible_characters == 0
 
 
 def test_invalid_speed_is_reported_before_playback():

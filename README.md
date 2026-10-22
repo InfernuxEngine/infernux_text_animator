@@ -3,11 +3,14 @@
 Official character animation plugin for native Infernux `UIText`. Independent of
 the Tween plugin and the engine source repository. Requires Infernux **>=0.4.3**
 with the **0.4.3 build 2** native-text hotfix installed.
+Project-script imports additionally need the preload-library import fix currently
+under verification in the engine. No public plugin release is available yet.
 
 **In development.** No public plugin version is advertised yet. The current core
 provides batch wave, shake, wiggle, bounce, pulse, swing and alpha effects, plus
-grapheme/word typewriter playback. Authoring components, effect tags, appearance
-animation, presets and the remaining product/platform checks are in progress.
+grapheme/word typewriter playback and a `TextAnimator` component using the engine's
+native serialized effect list. Effect tags, appearance animation, presets and the
+remaining product/platform checks are in progress.
 
 ```python
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
@@ -25,6 +28,12 @@ The engine supplies Unicode grapheme and glyph mapping. Revealing text changes
 visibility rather than truncating strings. Persistent effects start from rest
 geometry every frame, use one batch buffer per text, and preserve the separate
 manual and appearance layers. There are no per-character GameObjects or tweens.
+Word playback preserves the configured characters-per-second rate; reverse hiding
+removes whole words from the visible end, including partially shown words.
+
+Add **Animation / Text Animator** to a `UIText` object to configure effects,
+playback and typewriter settings in the Inspector. Disabling the component clears
+its effects layer and restores the previous visibility limit.
 
 Develop with CPython 3.13: install `sdk-requirements.txt`, run `python -m pytest`,
 then `python package.py`. Only `package/` enters the `.inxpkg`. Installed users

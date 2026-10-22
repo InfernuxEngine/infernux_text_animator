@@ -1,0 +1,33 @@
+{
+  "$schema": "infernux.editor_translations",
+  "locales": {
+    "en": {
+      "text_animator.kind": "Effect",
+      "text_animator.amplitude": "Amplitude",
+      "text_animator.speed": "Speed",
+      "text_animator.phase": "Character Phase",
+      "text_animator.range_start": "Start Character",
+      "text_animator.range_end": "End Character (-1: All)",
+      "text_animator.seed": "Random Seed",
+      "text_animator.unscaled_time": "Unscaled Time",
+      "text_animator.characters_per_second": "Characters Per Second",
+      "text_animator.punctuation_pause": "Punctuation Pause",
+      "text_animator.whitespace_pause": "Whitespace Pause",
+      "text_animator.by_word": "Reveal Words"
+    },
+    "zh": {
+      "text_animator.kind": "效果",
+      "text_animator.amplitude": "振幅",
+      "text_animator.speed": "速度",
+      "text_animator.phase": "逐字相位差",
+      "text_animator.range_start": "起始字符",
+      "text_animator.range_end": "结束字符（-1 为全部）",
+      "text_animator.seed": "随机种子",
+      "text_animator.unscaled_time": "不受时间缩放影响",
+      "text_animator.characters_per_second": "每秒字符数",
+      "text_animator.punctuation_pause": "标点停顿",
+      "text_animator.whitespace_pause": "空白停顿",
+      "text_animator.by_word": "逐词显示"
+    }
+  }
+}

@@ -20,12 +20,11 @@ class Typewriter:
         self._clock = 0.0
         self._count = 0
         self._hiding = False
-        self._hide_start = 0
         self._steps = []
         self._times = []
         self._characters = []
 
-    def _prepare(self):
+    def _prepare(self, hiding=False):
         speed = self.characters_per_second
         if not isfinite(speed) or speed <= 0:
             raise ValueError("Typing speed must be finite and positive")
@@ -35,19 +34,27 @@ class Typewriter:
         encoded = layout.text.encode("utf-8")
         characters = layout.characters
         self._characters = [encoded[c.source_start:c.source_end].decode("utf-8") for c in characters]
+        visible = self.text.max_visible_characters
+        limit = min(visible, len(characters)) if hiding and visible >= 0 else len(characters)
+        groups, start = [], 0
+        for index in range(limit):
+            character = characters[index]
+            if self.by_word and index + 1 < limit and character.word is not None and character.word == characters[index + 1].word:
+                continue
+            groups.append((start, index + 1))
+            start = index + 1
         self._steps, self._times = [], []
         time = 0.0
-        for index, character in enumerate(characters):
-            if self.by_word and index + 1 < len(characters) and character.word is not None and character.word == characters[index + 1].word:
-                continue
-            self._steps.append(index + 1)
+        for start, end in reversed(groups) if hiding else groups:
+            self._steps.append(start if hiding else end)
             self._times.append(time)
-            value = self._characters[index]
-            time += 1 / speed
-            if character.whitespace:
-                time += self.whitespace_pause
-            elif value[-1:] in ".,!?;:，。！？；：…":
-                time += self.punctuation_pause
+            time += (end - start) / speed
+            for index in range(start, end):
+                if characters[index].whitespace:
+                    time += self.whitespace_pause
+                elif self._characters[index][-1:] in ".,!?;:，。！？；：…":
+                    time += self.punctuation_pause
+        return limit
 
     def ShowText(self, value=None):
         if value is not None:
@@ -70,9 +77,7 @@ class Typewriter:
         return self
 
     def StartDisappearingText(self):
-        self._prepare()
-        self._count = len(self._characters) if self.text.max_visible_characters < 0 else self.text.max_visible_characters
-        self._hide_start = self._count
+        self._count = self._prepare(hiding=True)
         self._hiding, self._clock = True, 0.0
         self.playing = True
         self.Update(0.0)
@@ -103,10 +108,8 @@ class Typewriter:
             raise ValueError("Typing delta must be finite and nonnegative")
         self._clock += delta * self.timeScale
         steps = bisect_right(self._times, self._clock)
-        count = self._steps[steps - 1] if steps else 0
-        if self._hiding:
-            count = max(0, self._hide_start - count)
-        elif self.on_character is not None:
+        count = self._steps[steps - 1] if steps else self._count
+        if not self._hiding and self.on_character is not None:
             for index in range(self._count, count):
                 self.on_character(index, self._characters[index])
         self._count = count
