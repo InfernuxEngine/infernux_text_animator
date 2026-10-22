@@ -56,8 +56,8 @@ class TextAnimator(InxComponent):
                                      element_class=TextEffect, group="Effects", display_name_key="text_animator.effects")
     presets: list = serialized_field(default=[], field_type=FieldType.LIST, element_type=FieldType.SERIALIZABLE_OBJECT,
                                      element_class=TextPreset, group="Effects", display_name_key="text_animator.presets")
-    auto_play: bool = serialized_field(default=True, group="Playback", display_name_key="text_animator.auto_play")
     parse_tags: bool = serialized_field(default=True, group="Effects", display_name_key="text_animator.parse_tags")
+    auto_play: bool = serialized_field(default=True, group="Playback", display_name_key="text_animator.auto_play")
     unscaled_time: bool = serialized_field(default=False, group="Playback", display_name_key="text_animator.unscaled_time")
     typewriter: bool = serialized_field(default=False, group="Typewriter", display_name_key="text_animator.typewriter")
     characters_per_second: float = serialized_field(default=30.0, range=(0.1, 1000.0), group="Typewriter",
