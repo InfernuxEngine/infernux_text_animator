@@ -12,7 +12,7 @@ class Typewriter:
         self.punctuation_pause = punctuation_pause
         self.whitespace_pause = whitespace_pause
         self.by_word = by_word
-        self.timeScale = 1.0
+        self._time_scale = 1.0
         self.playing = False
         self.on_start = None
         self.on_character = None
@@ -29,6 +29,7 @@ class Typewriter:
         self._control_serial = 0
         self._finished = False
         self._clock = 0.0
+        self._playback_clock = 0.0
         self._completion_time = None
         self._count = 0
         self._hiding = False
@@ -89,11 +90,15 @@ class Typewriter:
         self._completion_time = schedule_cues(limit, finish) if not hiding else finish
         return limit
 
-    def _dispatch_actions(self, clock):
+    def _advance_clock(self, clock, scale):
+        self._playback_clock += (clock-self._clock)/scale
+        self._clock = clock
+
+    def _dispatch_actions(self, clock, scale):
         serial = self._control_serial
         while self._action_index < len(self._actions) and self._actions[self._action_index][0] <= clock:
             self.event_time, kind, value = self._actions[self._action_index]
-            self._clock = self.event_time
+            self._advance_clock(self.event_time, scale)
             self._action_index += 1
             if kind == "event":
                 if self.on_event is not None:
@@ -114,6 +119,18 @@ class Typewriter:
     def elapsed_time(self): return self._clock
 
     @property
+    def playback_time(self): return self._playback_clock
+
+    @property
+    def timeScale(self): return self._time_scale
+
+    @timeScale.setter
+    def timeScale(self, value):
+        if not isfinite(value) or value <= 0:
+            raise ValueError("Typewriter speed multiplier must be finite and positive")
+        self._time_scale = float(value)
+
+    @property
     def hiding(self): return self._hiding
 
     def _publish(self, count):
@@ -126,7 +143,7 @@ class Typewriter:
         if value is not None:
             self.text.text = value
         self._prepare()
-        self._count, self._clock, self._hiding = 0, 0.0, False
+        self._count, self._clock, self._playback_clock, self._hiding = 0, 0.0, 0.0, False
         self._publish(0)
         self.playing = True
         serial = self._control_serial
@@ -149,27 +166,36 @@ class Typewriter:
         self.playing = False
         return self
 
+    def _cancel(self):
+        self.StopShowingText()
+        self._generation += 1
+        self._completion_time = None
+        self._finished = True
+
     def StartDisappearingText(self):
         self._count = self._prepare(hiding=True)
-        self._hiding, self._clock = True, 0.0
+        self._hiding, self._clock, self._playback_clock = True, 0.0, 0.0
         self.playing = True
         self.Update(0.0)
         return self
 
     def SkipTypewriter(self, trigger_events=False):
+        if self._finished:
+            return self
         if self._completion_time is None:
             self._prepare()
         self._control_serial += 1
+        scale = self.timeScale
         if self._hiding:
             self._count = 0
             self._publish(0)
         else:
             if trigger_events:
-                if not self._dispatch_actions(float("inf")):
+                if not self._dispatch_actions(float("inf"), scale):
                     return self
             self._count = len(self._characters)
             self._publish(self._count)
-        self._clock = self._completion_time
+        self._advance_clock(self._completion_time, scale)
         self._action_index = len(self._actions)
         self._finish()
         return self
@@ -187,10 +213,11 @@ class Typewriter:
             return self
         if not isfinite(delta) or delta < 0:
             raise ValueError("Typing delta must be finite and nonnegative")
-        clock = self._clock + delta * self.timeScale
-        if not self._dispatch_actions(clock):
+        scale = self.timeScale
+        clock = self._clock + delta * scale
+        if not self._dispatch_actions(clock, scale):
             return self
-        self._clock = clock
+        self._advance_clock(clock, scale)
         if clock >= self._completion_time:
             self._finish()
         return self

@@ -4,7 +4,7 @@
 Inspector 中的命名预设。`<event=名称/>` 触发标记事件，`<wait=0.5/>` 控制打字停顿。
 原生颜色/字号标签仍由 `UIText.rich_text` 单独控制。
 
-出入场可组合淡入淡出、缩放、偏移、旋转、顶点扩张和确定随机方向，按打字机的实际
+入场和退场分别配置，可组合淡入淡出、缩放、偏移、旋转、顶点扩张和确定随机方向，按打字机的实际
 时间启动；消失动画完成前保持字形可见。字符事件可驱动现有 AudioSource 发声。
 `CharacterAnimator` 支持字符、区间、单词和行的手动修改，多次修改后统一 `Apply()`。
 
@@ -31,6 +31,32 @@ Inspector 中的命名预设。`<event=名称/>` 触发标记事件，`<wait=0.5
 回调中的暂停立即停在该处，本帧剩余时间不再推进持续字效或出入场；继续时不重放
 标记。暂停后可以跳过，跳过期间再次暂停则停在那里。`ShowText` 可替换尚未完成的
 退场；只改标签时复用原生布局并更新效果与事件，移除字效时立即清理效果层。
+
+`TextAnimator.SetTypewriterSpeed(2)` 将当前打字速度加倍，不会重新开始或重放事件。
+「打字速度倍率」独立于「每秒字符数」保存，禁用后重新启用仍然保留。倍率必须为有限正数，
+停止请使用 Pause。每次推进固定使用调用开始时的倍率，回调中的修改从下一次推进生效。
+字符间隔与 wait 标签一起缩放，持续字效和字素出入场时长保持各自的计时。
+低层 writer 可直接设置 `timeScale`；`elapsed_time` 是逻辑打字时间，`playback_time` 是
+结合已使用倍率得到的呈现时间，用于字素外观。Skip 可以直接跳过这段时间，无需实际等待。
+
+入场与退场分别设置时长、变形和随机种子。`PlayAppearance()` 与 `PlayAppearance(False)`
+会取代当前打字，分别使用「整段入场逐字间隔」和「整段退场逐字间隔」播放整段外观；
+打字模式下，字素启动间隔仍由打字速度控制。未完成时反向，会在同一个 Appearance 层中
+从当前偏移、旋转、缩放、透明度和顶点状态继续，不因两套配置不同而跳变。同一原生布局
+重新显示时保留当前可绘制的字素；不同布局重新绑定，不将无关文字做字形变形过渡。
+等待新显示逐字接管期间，字素保持当前几何，已被取代的旧退场不再继续推进。
+运行中修改配置会保留当前外观并调整剩余时长。两个阶段均使用 cubic-out 缓动。
+独立外观播放也支持 Pause/Play；SkipTypewriter 仅跳过打字流程。
+
+```python
+animator.appearance.duration = 0.3
+animator.appearance.offset = (0, 12)
+animator.disappearance.duration = 0.1
+animator.disappearance.offset = (-8, 0)
+animator.SetTypewriterSpeed(2)
+animator.ShowText("你好，世界")
+# 之后隐藏：animator.StartDisappearingText()
+```
 
 手动字符几何可批量修改后一次提交：
 

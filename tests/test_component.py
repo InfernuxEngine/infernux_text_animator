@@ -19,3 +19,6 @@ def test_effect_list_uses_native_serialization_and_independent_instances():
     preset = TextPreset(name="warning", effect=setting)
     decoded = TextPreset._deserialize(preset._serialize())
     assert decoded.name == "warning" and decoded.effect.build().kind == EffectKind.Swing
+    first.appearance.duration, first.disappearance.duration = 0.3, 0.1
+    assert second.appearance.duration == second.disappearance.duration == 0.25
+    assert fields['typewriter_speed'].default == 1

@@ -52,3 +52,27 @@ def test_appearance_staggers_from_rest_and_hides_without_touching_other_layers()
     assert not animator.active and np.all(animator.buffer.colors[:, :, 3] == 0)
     assert set(commits) == {TextGeometryLayer.Appearance}
     animator.Reset()
+
+
+def test_independent_phase_profiles_reverse_from_the_current_glyph_state_in_one_layer():
+    from infernux.lib import TextGeometryLayer
+    text, commits = text_buffer()
+    animator = CharacterAppearance(
+        text, Appearance(duration=1, offset=(0, 8), scale=(0.5, 0.5), rotation=90, vertex_expand=2),
+        Appearance(duration=0.4, offset=(-5, 0), scale=(0.7, 0.7), rotation=-30, alpha=0.2, vertex_expand=-1),
+    )
+    animator.Play(stagger=0.1).Sample(0.3)
+    before = [getattr(animator.buffer, name).copy() for name in ('offsets', 'rotations', 'scales', 'colors', 'vertex_offsets')]
+    animator.Play(False, stagger=0.05)
+    for name, value in zip(('offsets', 'rotations', 'scales', 'colors', 'vertex_offsets'), before):
+        assert getattr(animator.buffer, name) == pytest.approx(value)
+    animator.Sample(0.45)
+    previous = animator.buffer.colors.copy()
+    animator.Play(True, stagger=0)
+    assert animator.buffer.colors == pytest.approx(previous)
+    animator.Sample(2)
+    assert np.all(animator.buffer.colors[:, :, 3] == 1)
+    animator.Play(False, stagger=0).Update(0.4)
+    assert animator.buffer.offsets == pytest.approx(np.tile((-5, 0), (4, 1)))
+    assert np.allclose(animator.buffer.colors[:, :, 3], 0.2)
+    assert not animator.active and set(commits) == {TextGeometryLayer.Appearance}

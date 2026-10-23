@@ -4,8 +4,8 @@ Enable Parse Tags for `<wave amplitude=2>text</wave>`, nested effects and named
 Inspector presets. `<event=name/>` and `<wait=0.5/>` drive typewriter actions.
 Enable `UIText.rich_text` separately for native color/size tags.
 
-Appearance settings combine fade, size, offset, rotation, vertex expansion and
-seeded random offsets. They animate each typed character and retain outgoing
+Separate Appearance and Disappearance settings combine fade, size, offset,
+rotation, vertex expansion and seeded random offsets. They animate each typed character and retain outgoing
 glyphs until hiding finishes. Character events can play an existing AudioSource.
 `CharacterAnimator` edits characters, ranges, words or lines through one manual
 buffer; call `Apply()` once after multiple edits.
@@ -37,6 +37,37 @@ frame at the callback, including effects and appearance. Play continues without
 repeating it. Skip works while paused; another pause during Skip stops it there.
 ShowText can replace an unfinished hide. Changing only tags rebinds effects and
 events while retaining the native layout; removing effects clears their layer.
+
+`TextAnimator.SetTypewriterSpeed(2)` doubles the current typing rate without
+restarting it. Typing Speed Multiplier is saved independently of Characters Per
+Second and survives disable/enable. Use a positive finite multiplier; use Pause
+to stop. Each advance captures its rate, so a callback change starts with the next
+advance. Wait tags scale too; effects and appearance durations do not.
+For a low-level writer, assign `timeScale`. `elapsed_time` is logical typing time;
+`playback_time` is the rate-adjusted presentation time used for glyph animation.
+Skipping can advance these clocks without waiting.
+
+Configure entry and exit duration, transforms and random seed independently.
+`PlayAppearance()` and `PlayAppearance(False)` replace typing with a whole-text
+visual pass and use Whole-text Entry/Exit Stagger respectively. During typing,
+glyph starts follow the typing intervals instead. Reversing an unfinished pass
+continues from current glyph geometry in the same Appearance layer. Re-showing
+an active layout retains drawable glyphs; a different layout starts fresh rather
+than morphing unrelated text. Pending glyphs hold their geometry until the new
+reveal reaches them; the replaced hide does not continue. Live profile edits retain the current visual state
+and adjust the remaining duration. Both profiles use cubic-out easing.
+Pause/Play also works on standalone visual passes; SkipTypewriter only skips a
+typing pass.
+
+```python
+animator.appearance.duration = 0.3
+animator.appearance.offset = (0, 12)
+animator.disappearance.duration = 0.1
+animator.disappearance.offset = (-8, 0)
+animator.SetTypewriterSpeed(2)
+animator.ShowText("Hello 世界")
+# Later: animator.StartDisappearingText()
+```
 
 For manual character geometry:
 

@@ -1,3 +1,5 @@
+from math import isfinite
+
 from infernux.components import (
     FieldType, InxComponent, SerializableObject, add_component_menu,
     disallow_multiple, require_component, serialized_field,
@@ -70,6 +72,8 @@ class TextAnimator(InxComponent):
     typewriter: bool = serialized_field(default=False, group="text_animator.group.typewriter", display_name_key="text_animator.typewriter")
     characters_per_second: float = serialized_field(default=30.0, range=(0.1, 1000.0), group="text_animator.group.typewriter",
                                                     display_name_key="text_animator.characters_per_second")
+    typewriter_speed: float = serialized_field(default=1.0, range=(0.001, 100.0), slider=False,
+                                              group="text_animator.group.typewriter", display_name_key="text_animator.typewriter_speed")
     punctuation_pause: float = serialized_field(default=0.15, range=(0.0, 10.0), group="text_animator.group.typewriter",
                                                display_name_key="text_animator.punctuation_pause")
     whitespace_pause: float = serialized_field(default=0.0, range=(0.0, 10.0), group="text_animator.group.typewriter",
@@ -83,6 +87,8 @@ class TextAnimator(InxComponent):
     animate_appearance: bool = serialized_field(default=False, group="text_animator.group.appearance", display_name_key="text_animator.animate_appearance")
     appearance: TextAppearance = serialized_field(default=TextAppearance(), group="text_animator.group.appearance", display_name_key="text_animator.appearance")
     appearance_stagger: float = serialized_field(default=0.03, range=(0.0, 10), group="text_animator.group.appearance", display_name_key="text_animator.stagger")
+    disappearance: TextAppearance = serialized_field(default=TextAppearance(), group="text_animator.group.appearance", display_name_key="text_animator.disappearance")
+    disappearance_stagger: float = serialized_field(default=0.03, range=(0.0, 10), group="text_animator.group.appearance", display_name_key="text_animator.disappearance_stagger")
 
     _animation = None
     _writer = None
@@ -94,6 +100,7 @@ class TextAnimator(InxComponent):
     _preview_registration = None
     _sound = None
     _started_playback = False
+    _reveal_floor = 0
 
     def _event(self, name, kind):
         if name not in self.__dict__:
@@ -121,6 +128,7 @@ class TextAnimator(InxComponent):
         self._writer = Typewriter(text, characters_per_second=self.characters_per_second,
                                   punctuation_pause=self.punctuation_pause, whitespace_pause=self.whitespace_pause,
                                   by_word=self.by_word)
+        self._writer.timeScale = self.typewriter_speed
         self._writer.cues = self._animation.cues
         self._sound = None
         if self.character_audio is not None and not self._preview:
@@ -134,7 +142,8 @@ class TextAnimator(InxComponent):
         self._writer.on_hidden = self._finished_hiding
         self._writer.on_character_hidden = self._character_hidden
         self._hidden_pending = False
-        self._appearance = CharacterAppearance(text, self.appearance.build()) if self.animate_appearance else None
+        self._appearance = CharacterAppearance(text, self.appearance.build(), self.disappearance.build()) if self.animate_appearance else None
+        self._reveal_floor = 0
         if self._appearance is not None:
             self._writer.visibility_handler = self._publish_visibility
         self._playing = self._started_playback = False
@@ -145,7 +154,7 @@ class TextAnimator(InxComponent):
 
     def _character_shown(self, index, character):
         if self._appearance is not None:
-            self._appearance.Character(index, at=self._writer.event_time)
+            self._appearance.Character(index, at=self._writer.playback_time)
         if self._sound is not None and not self._writer._whitespace[index] and index % self.characters_per_sound == 0:
             self._sound.play()
         self._emit(self.on_character, (index, character))
@@ -156,10 +165,15 @@ class TextAnimator(InxComponent):
 
     def _character_hidden(self, index, character):
         if self._appearance is not None:
-            self._appearance.Character(index, False, at=self._writer.event_time)
+            self._appearance.Character(index, False, at=self._writer.playback_time)
 
     def _publish_visibility(self, count, hiding):
-        self._animation.text.max_visible_characters = self._writer.visible_limit if hiding else count
+        self._animation.text.max_visible_characters = self._writer.visible_limit if hiding else max(count, self._reveal_floor)
+
+    def _configure_appearance(self):
+        incoming, outgoing = self.appearance.build(), self.disappearance.build()
+        if (incoming, outgoing) != (self._appearance.appearance, self._appearance.disappearance):
+            self._appearance.SetAppearances(incoming, outgoing)
 
     def _finished_hiding(self):
         if self._appearance is not None and self._appearance.active:
@@ -193,12 +207,12 @@ class TextAnimator(InxComponent):
         if self._writer.playing:
             writer = self._writer
             generation, serial = writer._generation, writer._control_serial
-            clock, scale = writer.elapsed_time, writer.timeScale
+            clock = writer.playback_time
             self._writer.Update(delta)
             if self._writer is not writer or writer._generation != generation:
                 return
             if writer._control_serial != serial and not writer._finished:
-                delta = min(delta, max(0, (writer.elapsed_time-clock)/scale)) if scale else 0
+                delta = min(delta, max(0, writer.playback_time-clock))
         if self._animation is not animation:
             return
         if self._animation.has_effects:
@@ -227,6 +241,7 @@ class TextAnimator(InxComponent):
             self._animation.SetText(source)
             self._animation.SetEffects([effect.build() for effect in self.effects])
             self._writer.characters_per_second = self.characters_per_second
+            self._writer.timeScale = self.typewriter_speed
             self._writer.punctuation_pause = self.punctuation_pause
             self._writer.whitespace_pause = self.whitespace_pause
             self._writer.by_word = self.by_word
@@ -234,14 +249,14 @@ class TextAnimator(InxComponent):
             changed_layout = self._animation.text.get_text_layout() is not layout
             if self.animate_appearance:
                 if self._appearance is not None and not changed_layout:
-                    self._appearance.SetAppearance(self.appearance.build())
+                    self._configure_appearance()
                 else:
-                    self._appearance = CharacterAppearance(self._animation.text, self.appearance.build())
+                    self._appearance = CharacterAppearance(self._animation.text, self.appearance.build(), self.disappearance.build())
                     if self.typewriter and not changed_layout and self._writer._completion_time is not None:
-                        self._appearance.RebaseTime(self._writer.elapsed_time).SetVisible(False)
+                        self._appearance.RebaseTime(self._writer.playback_time).SetVisible(False)
                         for index in range(self._writer._count):
-                            self._appearance.Character(index, at=self._writer.elapsed_time-self.appearance.duration)
-                        self._appearance.Sample(self._writer.elapsed_time)
+                            self._appearance.Character(index, at=self._writer.playback_time-self.appearance.duration)
+                        self._appearance.Sample(self._writer.playback_time)
             elif self._appearance is not None:
                 self._appearance.Reset()
                 self._appearance = None
@@ -280,7 +295,7 @@ class TextAnimator(InxComponent):
             if self.typewriter:
                 self.ShowText()
             elif self._appearance is not None:
-                self._appearance.Play(stagger=self.appearance_stagger)
+                self.PlayAppearance()
             if self._animation is None:
                 return self
         elif not self._writer.playing and self._writer._completion_time is not None:
@@ -295,17 +310,37 @@ class TextAnimator(InxComponent):
         self._schedule()
         return self
 
+    def SetTypewriterSpeed(self, value):
+        if not isfinite(value) or value <= 0:
+            raise ValueError("Typewriter speed multiplier must be finite and positive")
+        self.typewriter_speed = float(value)
+        if self._writer is not None:
+            self._writer.timeScale = value
+        return self
+
     def ShowText(self, value=None):
         self._started_playback = True
         self._playing = True
         self._hidden_pending = False
+        if self._appearance is not None and self._appearance.layout is self._animation.text.get_text_layout():
+            self._appearance.Sample(max(self._appearance.time, self._writer.playback_time))
         if value is not None:
             self._animation.SetText(value)
         self._writer.cues = self._animation.cues
+        self._reveal_floor = 0
         if self._appearance is not None:
             if self._appearance.layout is not self._animation.text.get_text_layout():
                 self._appearance.Refresh()
-            self._appearance.RebaseTime(0).SetVisible(False)
+            self._configure_appearance()
+            continuing = self._appearance.active
+            if continuing:
+                visible = self._animation.text.max_visible_characters
+                self._reveal_floor = visible if visible >= 0 else self._appearance.buffer.character_count
+            self._appearance.RebaseTime(0)
+            if continuing:
+                self._appearance.Hold()
+            else:
+                self._appearance.SetVisible(False)
         self._writer.ShowText()
         if self._writer is None:
             return self
@@ -314,6 +349,8 @@ class TextAnimator(InxComponent):
 
     def SkipTypewriter(self, trigger_events=False):
         writer = self._writer
+        if writer._finished and writer._completion_time is None:
+            return self
         generation = writer._generation
         writer.SkipTypewriter(trigger_events)
         if self._writer is not writer or writer._generation != generation:
@@ -327,7 +364,7 @@ class TextAnimator(InxComponent):
                         self._hidden_pending = False
                         self._emit(self.on_hidden)
             else:
-                self._appearance.Sample(writer.elapsed_time)
+                self._appearance.Sample(writer.playback_time)
         self._schedule()
         return self
 
@@ -335,7 +372,10 @@ class TextAnimator(InxComponent):
         self._started_playback = True
         self._playing = True
         self._hidden_pending = False
+        self._reveal_floor = 0
         if self._appearance is not None:
+            self._appearance.Sample(max(self._appearance.time, self._writer.playback_time))
+            self._configure_appearance()
             self._appearance.RebaseTime(0)
         self._writer.StartDisappearingText()
         if self._writer is None:
@@ -347,7 +387,10 @@ class TextAnimator(InxComponent):
         if self._appearance is None:
             raise RuntimeError("Enable appearance animation in the Inspector first")
         self._hidden_pending = False
-        self._appearance.Play(showing, stagger=self.appearance_stagger)
+        self._appearance.Sample(max(self._appearance.time, self._writer.playback_time))
+        self._configure_appearance()
+        self._writer._cancel()
+        self._appearance.Play(showing, stagger=self.appearance_stagger if showing else self.disappearance_stagger)
         self._started_playback = True
         self._playing = True
         self._schedule()
@@ -358,7 +401,7 @@ class TextAnimator(InxComponent):
             raise RuntimeError("Stop the active playback before starting an editor preview")
         text = self.game_object.get_component(UIText)
         scope.capture(self, "_preview", "_preview_registration", "_playing", "_animation", "_writer",
-                      "_appearance", "_previous_visible_count", "_hidden_pending", "_sound", "_started_playback")
+                      "_appearance", "_previous_visible_count", "_hidden_pending", "_sound", "_started_playback", "_reveal_floor")
         scope.capture_text(text)
         scope.capture(text, "text")
         self._preview = True

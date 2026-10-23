@@ -8,7 +8,7 @@ Install **Infernux Text Animator** from the official plugin catalog's Animation 
 The plugin provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,
 grapheme/word typing, nested tags, marker events, appearance/disappearance and
 manual character editing. `TextAnimator` uses native serialized lists and nested
-appearance settings, with reversible Editor previews.
+independent entry/exit settings, with reversible Editor previews.
 
 ```python
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
@@ -41,6 +41,15 @@ Pause keeps the clock at that action, discards the rest of the current frame,
 and freezes effects and appearance with it. Play resumes without repeating the
 action. A paused writer can still skip; a new pause inside a skip stops it too.
 `SkipTypewriter(trigger_events=False)` skips remaining marker and character callbacks.
+`TextAnimator.SetTypewriterSpeed(2)` doubles the current typing rate without
+restarting text or repeating events. The saved Typing Speed Multiplier also
+applies when the component is enabled again. Values must be finite and positive;
+use `Pause()` to stop. Each `Update` captures its multiplier, so a change from a
+callback applies to the next advance. Character intervals and wait tags scale;
+persistent effects and appearance durations retain their own timing.
+The low-level equivalent is `writer.timeScale`. Its `elapsed_time` is the logical
+typing clock; `playback_time` maps that clock through the rates used so far for
+appearance timestamps. Skip can advance both clocks immediately.
 Named effect presets can be configured in the Inspector or supplied as a mapping.
 The Curve effect uses the native curve editor for offsets, rotation, scale or
 alpha. Hermite tangents and clamp/repeat/ping-pong wrapping are compiled once;
@@ -53,11 +62,24 @@ skew, corner offsets, RGBA or alpha and call `Apply()` once. Refresh selections
 after layout changes. `CustomEffect(evaluator)` supplies a whole-range batch
 callback; it creates no per-character objects.
 
-`CharacterAppearance(text, Appearance(...))` writes only the Appearance layer.
+`CharacterAppearance(text, Appearance(...), Appearance(...))` writes only the
+Appearance layer, with independent incoming and outgoing profiles.
 Fade, scale, offset, rotation, vertex expansion and seeded random direction can
-be combined. The component coordinates appearances with typewriter timestamps;
-disappearing glyphs stay drawable until their animation finishes. Pausing stops
-all three layers' playback. `on_character` carries `(index, grapheme)`;
+be combined. `PlayAppearance(True/False)` uses the component's separate entry and
+exit staggers and replaces the current typing pass. Typed characters instead
+follow the configured typing intervals. Mid-animation reversals start from each
+glyph's current offset, rotation, scale, alpha and vertices, even when the two
+profiles differ. Updating profiles preserves the current visuals and adjusts
+their remaining duration. Both phases use cubic-out easing.
+The component coordinates appearances with rate-adjusted typewriter timestamps;
+disappearing glyphs stay drawable until their animation finishes. Re-showing an
+active native layout preserves its currently drawable glyphs; a different layout
+gets a fresh buffer. This does not morph unrelated words into each other.
+Glyphs waiting for the new reveal retain their current geometry; the replaced
+hide no longer advances them in the background.
+Pause stops this component's effects, typing and appearance. `SkipTypewriter`
+finishes a typing pass; it does not finish a standalone `PlayAppearance` pass.
+`on_character` carries `(index, grapheme)`;
 `on_event` carries marker names. `on_complete` marks typing completion,
 `on_hidden` waits for the outgoing visual animation, and `on_visual_complete`
 marks a completed appearance pass. An optional existing AudioSource plays typing
