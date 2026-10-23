@@ -148,6 +148,7 @@ class TextAnimation:
         self.timeScale = 1.0
         self._layer = TextGeometryLayer.Effects
         self._layout = None
+        self._bound_markup = None
         self.Refresh()
 
     def Refresh(self):
@@ -157,13 +158,17 @@ class TextAnimation:
             self.text.text = markup.text
             self._markup = markup
         layout = self.text.get_text_layout()
-        if layout is self._layout:
+        if layout is self._layout and self._markup is self._bound_markup:
             return False
-        buffer = self.text.create_character_buffer()
+        buffer = self._buffer if layout is self._layout else self.text.create_character_buffer()
         tagged, cues = self._markup.bind(layout) if self._markup is not None else ([], ())
         stack = EffectStack(buffer.character_count, (*self.effects, *tagged))
         self._layout, self._buffer, self._stack = layout, buffer, stack
+        self._bound_markup = self._markup
         self.cues = cues
+        if not self.has_effects:
+            buffer.reset()
+            self.text.reset_character_data(self._layer)
         return True
 
     @property
@@ -188,6 +193,7 @@ class TextAnimation:
         stack = EffectStack(buffer.character_count, (*effects, *tagged))
         self.effects = effects
         self._layout, self._buffer, self._stack = layout, buffer, stack
+        self._bound_markup = self._markup
         self.cues = cues
         return self.Sample(self.time)
 

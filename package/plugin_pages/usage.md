@@ -31,6 +31,13 @@ newline, and whitespace does not play typing audio. Updating appearance settings
 preserves the current reveal/hide phase and pause state. `SetEffects([])` clears
 the Effects layer while preserving Manual and Appearance layers.
 
+Markers follow text order, including inside words. A marker splits a word's
+reveal; ordinary words still appear together. Pause from any callback stops that
+frame at the callback, including effects and appearance. Play continues without
+repeating it. Skip works while paused; another pause during Skip stops it there.
+ShowText can replace an unfinished hide. Changing only tags rebinds effects and
+events while retaining the native layout; removing effects clears their layer.
+
 For manual character geometry:
 
 ```python

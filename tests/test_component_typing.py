@@ -145,10 +145,12 @@ def test_first_callback_pause_survives_startup_and_play_resumes_without_replayin
 def test_marker_pause_freezes_appearance_and_effects_at_the_same_point(component):
     from TextAnimator import TextEffect
     animator, text, scheduler = component
-    text.text = 'A<event=pause/><wait=0.5/>中BC'
     animator.effects = [TextEffect()]
     animator.on_event.add_listener(lambda value: animator.Pause())
     animator.on_enable()
+    layout = text.get_text_layout()
+    animator.ShowText('A<event=pause/><wait=0.5/>中BC')
+    assert text.get_text_layout() is layout
     scheduler.Update(1, 1)
     assert text.max_visible_characters == 1 and not scheduler._active
     assert animator._writer.elapsed_time == pytest.approx(0.1)

@@ -53,16 +53,24 @@ def test_invalid_ranges_fail_when_binding_not_inside_the_frame_loop():
 
 def test_text_animation_rebuilds_buffers_only_when_native_layout_changes():
     from infernux_text_animator import TextAnimation
+    from test_typewriter import text_fixture
 
-    layout = SimpleNamespace()
-    text = SimpleNamespace(get_text_layout=lambda: layout, create_character_buffer=lambda: Buffer(4),
+    layout = text_fixture(list('ABCD')).get_text_layout()
+    text = SimpleNamespace(text='ABCD', get_text_layout=lambda: layout, create_character_buffer=lambda: Buffer(4),
                            set_character_data=lambda buffer, layer: samples.append((buffer, layer)),
-                           reset_character_data=lambda layer: None)
-    samples = []
-    animation = TextAnimation(text, [Effect()])
+                           reset_character_data=lambda layer: cleared.append(layer))
+    samples, cleared = [], []
+    animation = TextAnimation(text, parse_tags=True)
     animation.Sample(0.1).Sample(0.2)
     assert samples[0][0] is samples[1][0]
-    layout = SimpleNamespace()
+    animation.SetText('<wave amplitude=3>ABCD</wave><event=done/>').Sample(0.25)
+    assert samples[-1][0] is samples[0][0] and np.any(samples[-1][0].offsets != 0)
+    assert [cue.value for cue in animation.cues] == ['done']
+    cleared.clear()
+    animation.SetText('ABCD')
+    assert samples[-1][0] is samples[0][0] and np.all(samples[-1][0].offsets == 0)
+    assert not animation.cues and not animation.has_effects and cleared
+    layout = text_fixture(list('ABCD')).get_text_layout()
     animation.Sample(0.3)
     assert samples[-1][0] is not samples[0][0]
 
