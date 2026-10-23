@@ -26,6 +26,10 @@ Skipping also finishes paused playback. Completion is emitted once; calling
 dispatches remaining reveal-character and marker callbacks. The component's
 `Pause()` and `Play()` control its effects, typewriter and appearance together;
 the low-level `Typewriter` is advanced explicitly with `Update(delta_time)`.
+Character events use native displayed graphemes: a rich-text `<br>` produces a
+newline, and whitespace does not play typing audio. Updating appearance settings
+preserves the current reveal/hide phase and pause state. `SetEffects([])` clears
+the Effects layer while preserving Manual and Appearance layers.
 
 For manual character geometry:
 

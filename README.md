@@ -1,10 +1,9 @@
 # Infernux Text Animator
 
 Official character animation plugin for native Infernux `UIText`. Independent of
-the Tween plugin and the engine source repository. Requires Infernux **>=0.4.3**
-with the **0.4.3 build 2** native-text hotfix installed.
-Project-script imports additionally need the preload-library import fix currently
-under verification in the engine. No public plugin release is available yet.
+the Tween plugin and the engine source repository. Requires Infernux **0.4.3
+build 3 or later**, including native grapheme splitting and preload-library imports.
+No public plugin release is available yet.
 
 **In development.** No public plugin version is advertised yet. The current core
 provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,

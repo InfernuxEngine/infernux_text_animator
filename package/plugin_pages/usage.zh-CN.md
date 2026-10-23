@@ -23,6 +23,10 @@ Inspector 中的命名预设。`<event=名称/>` 触发标记事件，`<wait=0.5
 `Play()` 同时控制持续字效、打字机与出入场；低层 `Typewriter` 则由调用方显式执行
 `Update(delta_time)`。
 
+字符事件使用原生排版后的字素：富文本 `<br>` 返回换行，空白字符不播放打字音效。
+修改出入场设置会保留当前显示/隐藏进度与暂停状态。`SetEffects([])` 清除 Effects 层，
+不影响 Manual 和 Appearance 层。
+
 手动字符几何可批量修改后一次提交：
 
 ```python
