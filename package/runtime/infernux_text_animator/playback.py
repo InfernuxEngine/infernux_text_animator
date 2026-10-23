@@ -18,14 +18,15 @@ class PlaybackScheduler:
             if not self._active and self.on_activity is not None:
                 self.on_activity(False)
 
-    def Update(self, delta, unscaled_delta):
+    def update(self, delta, unscaled_delta):
         for controller in tuple(self._active):
             if controller in self._active:
                 controller._tick(delta, unscaled_delta)
 
-    def Clear(self):
+    def clear(self):
         for controller in tuple(self._active):
             controller.on_disable()
 
 
 scheduler = PlaybackScheduler()
+late_scheduler = PlaybackScheduler()

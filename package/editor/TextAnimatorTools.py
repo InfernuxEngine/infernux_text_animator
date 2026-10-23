@@ -53,7 +53,7 @@ class TextAnimatorPanel(EditorPanel):
         self._stop()
         scope = _context.create_preview()
         try:
-            self._component.BeginPreview(scope)
+            self._component.begin_preview(scope)
         except BaseException:
             scope.close()
             raise
@@ -76,7 +76,7 @@ class TextAnimatorPanel(EditorPanel):
             editor.defer(self._stop, description=translate("text_animator.stop_restore"))
         if self._scope is not None and not self._scope.closed:
             if ctx.button(translate("text_animator.pause")):
-                self._component.Pause()
+                self._component.pause_animation()
             ctx.same_line()
             if ctx.button(translate("text_animator.play")):
-                self._component.Play()
+                self._component.resume_animation()
