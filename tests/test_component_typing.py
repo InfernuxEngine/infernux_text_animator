@@ -121,3 +121,117 @@ def test_character_audio_uses_native_whitespace_metadata(component):
     animator._character_shown(1, "<br>")
     animator._character_shown(2, "B")
     assert played == [True]
+
+
+@pytest.mark.parametrize("initial_marker", [False, True])
+def test_first_callback_pause_survives_startup_and_play_resumes_without_replaying(component, initial_marker):
+    animator, text, scheduler = component
+    events = []
+    if initial_marker:
+        text.text = '<event=pause/>A中BC'
+        animator.on_event.add_listener(lambda value: (events.append(value), animator.Pause()))
+    else:
+        animator.on_character.add_listener(lambda data: (events.append(data[1]), animator.Pause()) if data[0] == 0 else None)
+    animator.on_enable()
+    assert not animator._playing and not animator._writer.playing and not scheduler._active
+    assert events == (["pause"] if initial_marker else ["A"])
+    assert text.max_visible_characters == (0 if initial_marker else 1)
+    animator.Play()
+    scheduler.Update(1, 1)
+    assert len(events) == 1 and text.max_visible_characters == 4
+    assert not animator._writer.playing and not scheduler._active
+
+
+def test_marker_pause_freezes_appearance_and_effects_at_the_same_point(component):
+    from TextAnimator import TextEffect
+    animator, text, scheduler = component
+    text.text = 'A<event=pause/><wait=0.5/>中BC'
+    animator.effects = [TextEffect()]
+    animator.on_event.add_listener(lambda value: animator.Pause())
+    animator.on_enable()
+    scheduler.Update(1, 1)
+    assert text.max_visible_characters == 1 and not scheduler._active
+    assert animator._writer.elapsed_time == pytest.approx(0.1)
+    assert animator._appearance.time == pytest.approx(0.1)
+    assert animator._animation.time == pytest.approx(0.1)
+    alpha = animator._appearance.buffer.colors[0, 0, 3]
+    assert 0 < alpha < 1
+    animator.Play()
+    scheduler.Update(0.05, 0.05)
+    assert text.max_visible_characters == 1
+    assert animator._appearance.time == pytest.approx(0.15)
+    assert animator._appearance.buffer.colors[0, 0, 3] > alpha
+
+
+def test_live_text_first_marker_pause_does_not_advance_the_new_appearance(component):
+    from test_typewriter import text_fixture
+    from TextAnimator import TextEffect
+    animator, text, scheduler = component
+    animator.effects = [TextEffect()]
+    animator.on_enable()
+    text.text = '<event=pause/>A中BC'
+    text.get_text_layout = text_fixture(list('A中BC')).get_text_layout
+    animator.on_event.add_listener(lambda value: animator.Pause())
+    scheduler.Update(1, 1)
+    assert text.max_visible_characters == 0 and not scheduler._active
+    assert animator._writer.elapsed_time == animator._appearance.time == animator._animation.time == 0
+
+
+@pytest.mark.parametrize("disable", [False, True])
+def test_hidden_callback_can_start_a_new_run_without_completing_its_visuals(component, disable):
+    animator, text, scheduler = component
+    completed = []
+    animator.on_enable()
+    animator.SkipTypewriter()
+    animator.on_hidden.add_listener(animator.on_disable if disable else animator.ShowText)
+    animator.on_visual_complete.add_listener(lambda: completed.append(True))
+    animator.StartDisappearingText()
+    scheduler.Update(1, 1)
+    assert completed == []
+    assert text.max_visible_characters == (2 if disable else 1)
+    assert bool(scheduler._active) is not disable
+
+
+def test_component_skip_interrupted_by_a_marker_keeps_partial_visuals(component):
+    animator, text, scheduler = component
+    text.text = 'A<wait=2/>中<event=pause/>BC'
+    animator.on_event.add_listener(lambda value: animator.Pause())
+    animator.on_enable()
+    scheduler.Update(0.05, 0.05)
+    animator.Pause().SkipTypewriter(True)
+    assert text.max_visible_characters == 2 and not scheduler._active
+    assert not animator._writer._finished and animator._appearance.active
+    assert animator._appearance.time == pytest.approx(animator._writer.elapsed_time)
+    assert 0 < animator._appearance.buffer.colors[1, 0, 3] < 1
+    animator.Play()
+    scheduler.Update(0.1, 0.1)
+    assert animator._appearance.buffer.colors[1, 0, 3] == pytest.approx(1)
+
+
+@pytest.mark.parametrize("restart", ["ShowText", "PlayAppearance"])
+def test_show_replaces_an_unfinished_visual_hide_without_delayed_disappearance(component, restart):
+    animator, text, scheduler = component
+    hidden = []
+    animator.on_hidden.add_listener(lambda: hidden.append(True))
+    animator.on_enable()
+    animator.SkipTypewriter().StartDisappearingText()
+    scheduler.Update(0.31, 0.31)
+    assert animator._hidden_pending and animator._appearance.active
+    getattr(animator, restart)()
+    scheduler.Update(1, 1)
+    assert text.max_visible_characters in (-1, 4) and hidden == []
+    assert not animator._hidden_pending and not scheduler._active
+
+
+def test_nested_skip_pause_samples_the_appearance_once_at_the_retained_event_time(component):
+    animator, text, scheduler = component
+    text.text = 'A<event=skip/>中<event=pause/><wait=1/>BC'
+    def marker(value):
+        animator.SkipTypewriter(True) if value == 'skip' else animator.Pause()
+    animator.on_event.add_listener(marker)
+    animator.on_enable()
+    scheduler.Update(1, 1)
+    assert not scheduler._active and text.max_visible_characters == 2
+    assert animator._writer.elapsed_time == pytest.approx(0.2)
+    assert animator._appearance.time == pytest.approx(0.2)
+    assert animator._appearance.buffer.colors[1, 0, 3] == pytest.approx(0.875)

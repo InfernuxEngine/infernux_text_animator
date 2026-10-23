@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from TextAnimator import TextAnimator
+from infernux_text_animator import Typewriter
 from infernux_text_animator.playback import PlaybackScheduler
 
 
@@ -10,11 +11,11 @@ def test_component_callback_disables_after_typing_and_unload_restores_state(monk
     scheduler, activity, resets = PlaybackScheduler(), [], []
     scheduler.on_activity = activity.append
     monkeypatch.setattr(component_module, "scheduler", scheduler)
-    text = SimpleNamespace(max_visible_characters=2, text="hello")
+    from test_typewriter import text_fixture
+    text = text_fixture(list("hello"))
     animation = SimpleNamespace(text=text, Reset=lambda: resets.append("reset"), has_effects=False,
                                 Refresh=lambda: False, source_text="hello")
-    writer = SimpleNamespace(playing=True, StopShowingText=lambda: setattr(writer, "playing", False), _generation=0)
-    writer.Update = lambda delta: setattr(writer, "playing", False)
+    writer = Typewriter(text, characters_per_second=100).ShowText()
     component = TextAnimator()
     component._animation, component._writer = animation, writer
     component.typewriter = True
@@ -24,7 +25,7 @@ def test_component_callback_disables_after_typing_and_unload_restores_state(monk
     scheduler.Update(0.1, 0.2)
     assert activity == [True, False]
     assert not scheduler._active
-    writer.playing = True
+    writer.ShowText()
     component.Play()
     scheduler.Clear()
     assert activity == [True, False, True, False]

@@ -35,6 +35,11 @@ Parse Tags setting. For example:
 Native `<color>` and `<size>` tags remain separate: enable `UIText.rich_text`
 to render them. `<event=bell/>` emits a marker; `<wait=0.5/>` pauses the writer.
 Markers preserve source order, including when a frame crosses several letters.
+An action tag inside a word splits that word's reveal at the tag; untagged words
+still appear together. A callback can pause or replace playback immediately.
+Pause keeps the clock at that action, discards the rest of the current frame,
+and freezes effects and appearance with it. Play resumes without repeating the
+action. A paused writer can still skip; a new pause inside a skip stops it too.
 `SkipTypewriter(trigger_events=False)` skips remaining marker and character callbacks.
 Named effect presets can be configured in the Inspector or supplied as a mapping.
 The Curve effect uses the native curve editor for offsets, rotation, scale or

@@ -1,6 +1,5 @@
 """Reveal native-layout graphemes without slicing or rewriting the text."""
 
-from bisect import bisect_right
 from math import isfinite
 
 from infernux.lib import TextLayout
@@ -27,13 +26,12 @@ class Typewriter:
         self._actions = ()
         self._action_index = 0
         self._generation = 0
+        self._control_serial = 0
         self._finished = False
         self._clock = 0.0
         self._completion_time = None
         self._count = 0
         self._hiding = False
-        self._steps = []
-        self._times = []
         self._characters = []
         self._whitespace = []
 
@@ -50,19 +48,21 @@ class Typewriter:
         visible = self.text.max_visible_characters
         limit = min(visible, len(characters)) if hiding and visible >= 0 else len(characters)
         self.visible_limit = limit
+        cues = {}
+        for cue in self.cues:
+            cues.setdefault(cue.character, []).append(cue)
         groups, start = [], 0
         for index in range(limit):
             character = characters[index]
-            if self.by_word and index + 1 < limit and character.word is not None and character.word == characters[index + 1].word:
+            if (self.by_word and index + 1 < limit and character.word is not None
+                    and character.word == characters[index + 1].word and (hiding or index + 1 not in cues)):
                 continue
             groups.append((start, index + 1))
             start = index + 1
         self._generation += 1
+        self._control_serial += 1
         self._finished = False
-        self._steps, self._times, self._actions = [], [], []
-        cues = {}
-        for cue in self.cues:
-            cues.setdefault(cue.character, []).append(cue)
+        self._actions = []
         self._action_index = 0
         time = 0.0
 
@@ -77,37 +77,36 @@ class Typewriter:
         for start, end in reversed(groups) if hiding else groups:
             if not hiding:
                 time = schedule_cues(start, time)
-            self._steps.append(start if hiding else end)
-            self._times.append(time)
-            self._actions.append((time, "hidden" if hiding else "characters", (start, end)))
+            group_time = time
             for index in range(start, end):
-                if self.by_word and not hiding and index != start:
-                    time = schedule_cues(index, time)
+                self._actions.append((group_time, "hidden" if hiding else "character", (index, start if hiding else end)))
                 time += 1 / speed
                 if characters[index].whitespace:
                     time += self.whitespace_pause
                 elif self._characters[index][-1:] in ".,!?;:，。！？；：…":
                     time += self.punctuation_pause
-        finish = max(self._times[-1] if self._times else 0, self._actions[-1][0] if self._actions else 0)
+        finish = self._actions[-1][0] if self._actions else 0
         self._completion_time = schedule_cues(limit, finish) if not hiding else finish
         return limit
 
     def _dispatch_actions(self, clock):
-        generation = self._generation
+        serial = self._control_serial
         while self._action_index < len(self._actions) and self._actions[self._action_index][0] <= clock:
             self.event_time, kind, value = self._actions[self._action_index]
+            self._clock = self.event_time
             self._action_index += 1
             if kind == "event":
                 if self.on_event is not None:
                     self.on_event(value)
             else:
+                index, count = value
+                if count != self._count:
+                    self._count = count
+                    self._publish(count)
                 callback = self.on_character_hidden if kind == "hidden" else self.on_character
-                for index in range(*value):
-                    if callback is not None:
-                        callback(index, self._characters[index])
-                    if generation != self._generation:
-                        return False
-            if generation != self._generation:
+                if callback is not None:
+                    callback(index, self._characters[index])
+            if serial != self._control_serial:
                 return False
         return True
 
@@ -130,19 +129,23 @@ class Typewriter:
         self._count, self._clock, self._hiding = 0, 0.0, False
         self._publish(0)
         self.playing = True
+        serial = self._control_serial
         if self.on_start is not None:
             self.on_start()
-        self.Update(0.0)
+        if serial == self._control_serial:
+            self.Update(0.0)
         return self
 
     def StartShowingText(self):
         if self._completion_time is None:
             return self.ShowText()
         if not self._finished:
+            self._control_serial += 1
             self.playing = True
         return self
 
     def StopShowingText(self):
+        self._control_serial += 1
         self.playing = False
         return self
 
@@ -156,42 +159,38 @@ class Typewriter:
     def SkipTypewriter(self, trigger_events=False):
         if self._completion_time is None:
             self._prepare()
+        self._control_serial += 1
         if self._hiding:
             self._count = 0
             self._publish(0)
-            callback = self.on_hidden
         else:
             if trigger_events:
                 if not self._dispatch_actions(float("inf")):
                     return self
             self._count = len(self._characters)
             self._publish(self._count)
-            callback = self.on_complete
-        was_finished = self._finished
         self._clock = self._completion_time
         self._action_index = len(self._actions)
+        self._finish()
+        return self
+
+    def _finish(self):
+        was_finished = self._finished
         self.playing = False
         self._finished = True
+        callback = self.on_hidden if self._hiding else self.on_complete
         if not was_finished and callback is not None:
             callback()
-        return self
 
     def Update(self, delta):
         if not self.playing:
             return self
         if not isfinite(delta) or delta < 0:
             raise ValueError("Typing delta must be finite and nonnegative")
-        self._clock += delta * self.timeScale
-        steps = bisect_right(self._times, self._clock)
-        count = self._steps[steps - 1] if steps else self._count
-        self._count = count
-        self._publish(count)
-        if not self._dispatch_actions(self._clock):
+        clock = self._clock + delta * self.timeScale
+        if not self._dispatch_actions(clock):
             return self
-        if ((self._hiding and count == 0) or (not self._hiding and count == len(self._characters))) and self._clock >= self._completion_time:
-            self.playing = False
-            self._finished = True
-            callback = self.on_hidden if self._hiding else self.on_complete
-            if callback is not None:
-                callback()
+        self._clock = clock
+        if clock >= self._completion_time:
+            self._finish()
         return self
