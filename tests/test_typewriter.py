@@ -108,3 +108,19 @@ def test_skip_does_not_replay_events_or_hide_text_when_resumed():
     writer.on_complete = lambda: completed.append(True)
     writer.ShowText().SkipTypewriter().StartShowingText().Update(1)
     assert text.max_visible_characters == 5 and completed == [True]
+
+
+@pytest.mark.parametrize("hiding", [False, True])
+def test_skip_finishes_paused_playback_and_emits_completion_once(hiding):
+    text = text_fixture(list("Hello"))
+    writer, completed = Typewriter(text), []
+    writer.ShowText()
+    if hiding:
+        writer.SkipTypewriter().StartDisappearingText()
+    writer.on_complete = lambda: completed.append("shown")
+    writer.on_hidden = lambda: completed.append("hidden")
+    writer.StopShowingText().SkipTypewriter()
+    assert text.max_visible_characters == (0 if hiding else 5)
+    assert completed == ["hidden" if hiding else "shown"]
+    writer.SkipTypewriter().StartShowingText().Update(1)
+    assert len(completed) == 1

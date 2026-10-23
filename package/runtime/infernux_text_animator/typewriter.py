@@ -159,12 +159,12 @@ class Typewriter:
             self._count = len(self._characters)
             self._publish(self._count)
             callback = self.on_complete
-        was_playing = self.playing
+        was_finished = self._finished
         self._clock = self._completion_time
         self._action_index = len(self._actions)
         self.playing = False
         self._finished = True
-        if was_playing and callback is not None:
+        if not was_finished and callback is not None:
             callback()
         return self
 

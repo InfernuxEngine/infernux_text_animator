@@ -21,6 +21,27 @@ Offsets use local text coordinates, with positive Y pointing down.
 `StartDisappearingText` hides visible characters. Set `on_start`, `on_character`,
 `on_complete` or `on_hidden` for events. Skip events are opt-in.
 
+Skipping also finishes paused playback. Completion is emitted once; calling
+`SkipTypewriter` again does not repeat it. `trigger_events=True` additionally
+dispatches remaining reveal-character and marker callbacks. The component's
+`Pause()` and `Play()` control its effects, typewriter and appearance together;
+the low-level `Typewriter` is advanced explicitly with `Update(delta_time)`.
+
+For manual character geometry:
+
+```python
+from infernux_text_animator import CharacterAnimator
+
+characters = CharacterAnimator(label)
+characters.Word(0).Offset((0, -8)).Rotate(-5)
+characters.Range().Alpha(0.8)
+characters.Apply()
+```
+
+The Manual, Effects and Appearance layers compose in that order. Use one
+Manual-layer controller per label. Refresh selections after changing layout,
+and call `Reset()` when its manual geometry is no longer needed.
+
 Add **Animation / Text Animator** to a UIText to edit the native serialized effect
 list and typewriter settings. Components share one update entry; paused, empty or
 completed playback disables idle work. Open **Animation / Text Animator** in Edit

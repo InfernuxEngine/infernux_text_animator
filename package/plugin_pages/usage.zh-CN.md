@@ -18,6 +18,25 @@ Inspector 中的命名预设。`<event=名称/>` 触发标记事件，`<wait=0.5
 通过 `StartDisappearingText` 隐藏已显示的字。可设置开始、逐字、完成和隐藏
 回调，跳过时是否触发逐字事件由调用者明确选择。
 
+暂停后也可以直接跳过，完成事件只发送一次，重复调用 `SkipTypewriter` 不会重发。
+传入 `trigger_events=True` 会额外执行剩余的显示字符和标记回调。组件的 `Pause()`、
+`Play()` 同时控制持续字效、打字机与出入场；低层 `Typewriter` 则由调用方显式执行
+`Update(delta_time)`。
+
+手动字符几何可批量修改后一次提交：
+
+```python
+from infernux_text_animator import CharacterAnimator
+
+characters = CharacterAnimator(label)
+characters.Word(0).Offset((0, -8)).Rotate(-5)
+characters.Range().Alpha(0.8)
+characters.Apply()
+```
+
+Manual、Effects、Appearance 三层依次组合。同一文字使用一个 Manual 层控制器；
+改变布局后应刷新选择，不再需要手动变形时调用 `Reset()` 还原。
+
 可在 UIText 上添加“Animation / Text Animator”组件，通过引擎通用列表控件
 编辑效果与打字机参数。组件共用一个更新入口，暂停、空效果或打字结束后
 关闭无用更新；禁用时恢复自己的几何层与可见数。编辑模式打开“动画 / 文字动画”，
