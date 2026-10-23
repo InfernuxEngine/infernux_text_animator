@@ -189,7 +189,7 @@ class TextAnimation:
         self.effects = effects
         self._layout, self._buffer, self._stack = layout, buffer, stack
         self.cues = cues
-        return self
+        return self.Sample(self.time)
 
     def Sample(self, time):
         self.Refresh()

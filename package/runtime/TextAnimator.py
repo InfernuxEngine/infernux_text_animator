@@ -146,7 +146,7 @@ class TextAnimator(InxComponent):
     def _character_shown(self, index, character):
         if self._appearance is not None:
             self._appearance.Character(index, at=self._writer.event_time)
-        if self._sound is not None and not character.isspace() and index % self.characters_per_sound == 0:
+        if self._sound is not None and not self._writer._whitespace[index] and index % self.characters_per_sound == 0:
             self._sound.play()
         self._emit(self.on_character, (index, character))
 
@@ -213,6 +213,7 @@ class TextAnimator(InxComponent):
 
     def on_validate(self):
         if self._animation is not None:
+            layout = self._animation._layout
             source = self._animation.source_text
             self._animation.parse_tags = self.parse_tags
             self._animation.presets = {preset.name: preset.effect.build() for preset in self.presets}
@@ -222,10 +223,32 @@ class TextAnimator(InxComponent):
             self._writer.punctuation_pause = self.punctuation_pause
             self._writer.whitespace_pause = self.whitespace_pause
             self._writer.by_word = self.by_word
-            if self._appearance is not None:
+            self._writer.cues = self._animation.cues
+            changed_layout = self._animation.text.get_text_layout() is not layout
+            if self.animate_appearance:
+                if self._appearance is not None and not changed_layout:
+                    self._appearance.SetAppearance(self.appearance.build())
+                else:
+                    self._appearance = CharacterAppearance(self._animation.text, self.appearance.build())
+                    if self.typewriter and not changed_layout and self._writer._completion_time is not None:
+                        self._appearance.RebaseTime(self._writer.elapsed_time).SetVisible(False)
+                        for index in range(self._writer._count):
+                            self._appearance.Character(index, at=self._writer.elapsed_time-self.appearance.duration)
+                        self._appearance.Sample(self._writer.elapsed_time)
+            elif self._appearance is not None:
                 self._appearance.Reset()
-            self._appearance = CharacterAppearance(self._animation.text, self.appearance.build()) if self.animate_appearance else None
+                self._appearance = None
             self._writer.visibility_handler = self._publish_visibility if self._appearance is not None else None
+            if changed_layout and self.typewriter and self._started_playback:
+                playing = self._playing
+                self.ShowText()
+                if not playing:
+                    self.Pause()
+            elif self.typewriter and self._writer._completion_time is not None:
+                self._writer._publish(self._writer._count)
+            if self._hidden_pending and self._appearance is None:
+                self._hidden_pending = False
+                self._emit(self.on_hidden)
             self._schedule()
 
     def on_disable(self):

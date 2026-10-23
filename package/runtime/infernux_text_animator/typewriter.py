@@ -3,6 +3,8 @@
 from bisect import bisect_right
 from math import isfinite
 
+from infernux.lib import TextLayout
+
 
 class Typewriter:
     def __init__(self, text, *, characters_per_second=30.0, punctuation_pause=0.15, whitespace_pause=0.0, by_word=False):
@@ -27,11 +29,13 @@ class Typewriter:
         self._generation = 0
         self._finished = False
         self._clock = 0.0
+        self._completion_time = None
         self._count = 0
         self._hiding = False
         self._steps = []
         self._times = []
         self._characters = []
+        self._whitespace = []
 
     def _prepare(self, hiding=False):
         speed = self.characters_per_second
@@ -40,9 +44,9 @@ class Typewriter:
         if any(not isfinite(v) or v < 0 for v in (self.punctuation_pause, self.whitespace_pause)):
             raise ValueError("Typing pauses must be finite and nonnegative")
         layout = self.text.get_text_layout()
-        encoded = layout.text.encode("utf-8")
         characters = layout.characters
-        self._characters = [encoded[c.source_start:c.source_end].decode("utf-8") for c in characters]
+        self._characters = TextLayout.split_graphemes(layout.display_text)
+        self._whitespace = [character.whitespace for character in characters]
         visible = self.text.max_visible_characters
         limit = min(visible, len(characters)) if hiding and visible >= 0 else len(characters)
         self.visible_limit = limit
@@ -132,6 +136,8 @@ class Typewriter:
         return self
 
     def StartShowingText(self):
+        if self._completion_time is None:
+            return self.ShowText()
         if not self._finished:
             self.playing = True
         return self
@@ -148,6 +154,8 @@ class Typewriter:
         return self
 
     def SkipTypewriter(self, trigger_events=False):
+        if self._completion_time is None:
+            self._prepare()
         if self._hiding:
             self._count = 0
             self._publish(0)

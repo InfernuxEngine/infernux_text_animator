@@ -44,6 +44,13 @@ class CharacterAppearance:
         self.active = False
         return self
 
+    def SetAppearance(self, appearance):
+        self._starts[:] = self.time-(self.time-self._starts)*(appearance.duration/self.appearance.duration)
+        self.appearance = appearance
+        angles = np.random.default_rng(appearance.seed).uniform(0, 2*np.pi, self.buffer.character_count)
+        self._offsets = np.array(appearance.offset) + appearance.random_offset*np.column_stack((np.cos(angles), np.sin(angles)))
+        return self.Sample(self.time)
+
     def Play(self, showing=True, *, stagger=0.03):
         if not isfinite(stagger) or stagger < 0:
             raise ValueError("Character stagger must be finite and nonnegative")

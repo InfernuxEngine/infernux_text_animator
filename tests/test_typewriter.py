@@ -13,7 +13,7 @@ def text_fixture(graphemes, word_ids=None):
         characters.append(SimpleNamespace(source_start=offset, source_end=end, whitespace=grapheme.isspace(),
                                           word=None if word_ids is None else word_ids[index]))
         offset = end
-    layout = SimpleNamespace(text=text, characters=characters)
+    layout = SimpleNamespace(text=text, display_text=text, characters=characters)
     return SimpleNamespace(text=text, max_visible_characters=-1, get_text_layout=lambda: layout)
 
 
@@ -124,3 +124,28 @@ def test_skip_finishes_paused_playback_and_emits_completion_once(hiding):
     assert completed == ["hidden" if hiding else "shown"]
     writer.SkipTypewriter().StartShowingText().Update(1)
     assert len(completed) == 1
+
+
+@pytest.mark.parametrize("skip", [False, True])
+def test_first_start_or_skip_prepares_the_existing_text(skip):
+    text, completed = text_fixture(list("Hello")), []
+    writer = Typewriter(text, characters_per_second=10)
+    writer.on_complete = lambda: completed.append(True)
+    if skip:
+        writer.SkipTypewriter()
+        assert text.max_visible_characters == 5 and completed == [True]
+    else:
+        writer.StartShowingText()
+        assert text.max_visible_characters == 1 and not completed
+    writer.Update(1).SkipTypewriter()
+    assert text.max_visible_characters == 5 and completed == [True]
+
+
+def test_character_callbacks_use_display_graphemes_instead_of_markup_source():
+    text = text_fixture(["A", "\n", "中", "e\u0301"])
+    text.get_text_layout().text = "A<br>中<color=#ff0000>e\u0301</color>"
+    events = []
+    writer = Typewriter(text, characters_per_second=10)
+    writer.on_character = lambda index, char: events.append((index, char, writer._whitespace[index]))
+    writer.ShowText().Update(1)
+    assert events == [(0, "A", False), (1, "\n", True), (2, "中", False), (3, "e\u0301", False)]

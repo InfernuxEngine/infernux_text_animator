@@ -76,3 +76,48 @@ def test_edit_mode_enable_keeps_authored_text_and_registers_no_playback(componen
     animator.on_enable()
     assert animator._animation is None and not scheduler._active
     assert text.text == 'A中BC' and text.max_visible_characters == 2
+
+
+def test_live_appearance_edit_preserves_typing_phase_and_pause(component):
+    animator, text, scheduler = component
+    animator.on_enable()
+    scheduler.Update(0.15, 0.15)
+    appearance = animator._appearance
+    alpha = appearance.buffer.colors[:, :, 3].copy()
+    animator.Pause()
+    animator.appearance.rotation = 20
+    animator.appearance.duration = 0.4
+    animator.on_validate()
+    assert animator._appearance is appearance
+    assert appearance.buffer.colors[:, :, 3] == pytest.approx(alpha)
+    assert text.max_visible_characters == 2 and not scheduler._active
+    assert appearance.active
+    animator.Play()
+    scheduler.Update(0.05, 0.05)
+    assert appearance.buffer.colors[1, 0, 3] > alpha[1, 0]
+
+
+def test_removing_the_last_effect_clears_its_geometry_before_unscheduling(component):
+    import numpy as np
+    from TextAnimator import TextEffect
+    animator, text, scheduler = component
+    animator.typewriter = animator.animate_appearance = False
+    animator.effects = [TextEffect()]
+    animator.on_enable()
+    scheduler.Update(0.15, 0.15)
+    assert np.any(animator._animation._buffer.offsets != 0)
+    animator.effects.clear()
+    animator.on_validate()
+    assert np.all(animator._animation._buffer.offsets == 0)
+    assert not animator._animation.has_effects and not scheduler._active
+
+
+def test_character_audio_uses_native_whitespace_metadata(component):
+    animator, text, scheduler = component
+    animator.on_enable()
+    played = []
+    animator._sound = SimpleNamespace(play=lambda: played.append(True))
+    animator._writer._whitespace[1] = True
+    animator._character_shown(1, "<br>")
+    animator._character_shown(2, "B")
+    assert played == [True]
