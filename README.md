@@ -3,13 +3,12 @@
 Official character animation plugin for native Infernux `UIText`. Independent of
 the Tween plugin and the engine source repository. Requires Infernux **0.4.3
 build 3 or later**, including native grapheme splitting and preload-library imports.
-No public plugin release is available yet.
+Install **Infernux Text Animator** from the official plugin catalog's Animation category.
 
-**In development.** No public plugin version is advertised yet. The current core
-provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,
+The plugin provides batch wave, shake, wiggle, bounce, pulse, swing, tint and alpha effects,
 grapheme/word typing, nested tags, marker events, appearance/disappearance and
 manual character editing. `TextAnimator` uses native serialized lists and nested
-appearance settings. The remaining product/platform checks are still in progress.
+appearance settings, with reversible Editor previews.
 
 ```python
 from infernux_text_animator import Effect, EffectKind, TextAnimation, Typewriter
