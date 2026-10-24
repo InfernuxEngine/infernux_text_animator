@@ -4,9 +4,9 @@ This is an independent official plugin. The engine does not contain a submodule,
 CMake dependency or bundled source copy of this repository.
 
 Use a fresh CPython 3.13 environment and install `sdk-requirements.txt`.
-This candidate requires native Infernux 0.4.3 hotfix 4. Pin the tested published
-Windows/Linux wheels before releasing; a source/native development override is
-not evidence that the public SDK package has passed.
+The SDK is pinned to the published Infernux 0.4.3 hotfix 4 wheel on Windows/Linux.
+A source/native development override is not evidence that the public SDK package
+has passed.
 Run `python -m pytest`, then `python package.py`. Only `package/` enters the
 archive; tests and examples remain development content.
 
