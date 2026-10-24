@@ -201,10 +201,10 @@ class EffectStack:
                 weight = np.clip(amplitude*(wave+1)/2, 0, 1)
                 buffer.colors[selected] *= 1+weight[:, None, None]*(np.asarray(effect.color)-1)
         if scale != 1:
-            buffer.offsets *= scale
-            buffer.vertex_offsets *= scale
+            buffer.offsets[:] *= scale
+            buffer.vertex_offsets[:] *= scale
             buffer.affine_transforms[:, :, 3] *= scale
-            buffer.vertex_depth_offsets *= scale
+            buffer.vertex_depth_offsets[:] *= scale
 
 
 class TextAnimation:

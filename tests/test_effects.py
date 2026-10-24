@@ -56,6 +56,38 @@ def test_multiple_effects_compose_and_zero_characters_need_no_special_path():
     EffectStack(0, [Effect(EffectKind.WAVE)]).sample(Buffer(0), 1)
 
 
+def test_scaled_effects_write_native_character_views_without_rebinding():
+    from infernux_text_animator import CustomEffect
+
+    storage = Buffer(2)
+
+    class NativeViews:
+        character_count = storage.character_count
+        offsets = property(lambda self: storage.offsets)
+        vertex_offsets = property(lambda self: storage.vertex_offsets)
+        affine_transforms = property(lambda self: storage.affine_transforms)
+        vertex_depth_offsets = property(lambda self: storage.vertex_depth_offsets)
+
+        def reset(self):
+            storage.reset()
+
+    buffer = NativeViews()
+
+    def deform(target, selected, time):
+        target.offsets[selected] = (2, 4)
+        target.vertex_offsets[selected] = 6
+        target.affine_transforms[selected, :, 3] = (2, 4, 6)
+        target.vertex_depth_offsets[selected] = 8
+
+    stack = EffectStack(buffer.character_count, [CustomEffect(deform)])
+    for scale in (.5, 2, 2):
+        stack.sample(buffer, .2, scale=scale)
+        assert np.all(buffer.offsets == np.array((2, 4)) * scale)
+        assert np.all(buffer.vertex_offsets == 6 * scale)
+        assert np.all(buffer.affine_transforms[:, :, 3] == np.array((2, 4, 6)) * scale)
+        assert np.all(buffer.vertex_depth_offsets == 8 * scale)
+
+
 def test_invalid_ranges_fail_when_binding_not_inside_the_frame_loop():
     with pytest.raises(ValueError, match="exceeds"):
         EffectStack(2, [Effect(start=1, end=4)])
