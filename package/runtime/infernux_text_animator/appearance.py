@@ -56,8 +56,8 @@ class Appearance:
     seed: int = 0
 
     def __post_init__(self):
-        if not isfinite(self.duration) or self.duration <= 0:
-            raise ValueError("Appearance duration must be positive and finite")
+        if not isfinite(self.duration):
+            raise ValueError("Appearance duration must be finite")
         if not all(isfinite(value) for value in (*self.offset, *self.scale, self.rotation, self.alpha,
                                                  self.vertex_expand, self.random_offset)):
             raise ValueError("Appearance transforms must be finite")
@@ -91,10 +91,11 @@ class CharacterAppearance:
     def _compile(self, profile, tags):
         from .effects import EffectStack
         count = self.buffer.character_count
+        duration = max(0.0, profile.duration)
         values = self._hidden_state(profile) if self.default_enabled else np.tile(_REST, (count, 1))
         if not self.default_enabled:
             values[:, 5] = 0
-        durations = np.full((count, len(_REST)), profile.duration if self.default_enabled else 0.0)
+        durations = np.full((count, len(_REST)), duration if self.default_enabled else 0.0)
         tagged = np.zeros(count, dtype=np.bool_)
         explicit = np.zeros_like(durations)
         channels_set = np.zeros_like(durations, dtype=np.bool_)
@@ -111,7 +112,7 @@ class CharacterAppearance:
             tagged[selected] = True
             if not isinstance(tag, AppearanceTag):
                 motion.append(tag)
-                durations[selected] = np.maximum(durations[selected], profile.duration)
+                durations[selected] = np.maximum(durations[selected], duration)
                 continue
             if tag.kind is AppearanceKind.FADE:
                 channels = slice(5, 6)
@@ -126,7 +127,7 @@ class CharacterAppearance:
             elif tag.kind is AppearanceKind.ROTATION:
                 channels = slice(2, 3)
                 values[selected, 2] += 90*tag.amplitude
-            explicit[selected, channels] = np.maximum(explicit[selected, channels], profile.duration/tag.speed)
+            explicit[selected, channels] = np.maximum(explicit[selected, channels], duration/tag.speed)
             channels_set[selected, channels] = True
         durations[channels_set] = np.maximum(durations[channels_set], explicit[channels_set]) if self.constant_defaults else explicit[channels_set]
         # Dynamic effects use the same evaluator in every category. The phase
@@ -172,7 +173,9 @@ class CharacterAppearance:
         pending = remaining > 0
         self._from[:] = current
         self._to[:] = np.where(self._showing[:, None], _REST, self._outgoing)
-        self._to[~pending] = current[~pending]
+        skipped = (new_duration == 0) & (self._durations > 0) & (progress < 1)
+        retained = ~pending & ~skipped
+        self._to[retained] = current[retained]
         self._starts[:] = np.where(np.any(pending, axis=1), np.maximum(self.time, self._starts), -np.inf)
         self._durations[:] = np.where(pending, remaining, 0)
         return self.sample(self.time)

@@ -51,6 +51,25 @@ def test_typing_appearance_pause_and_reverse_keep_exiting_glyphs_until_they_fini
     scheduler.update(0.21, 0.21)
     assert text.max_visible_characters == 0 and hidden == [True]
     assert not scheduler._active
+    visual = []
+    animator.on_visual_complete.add_listener(lambda: visual.append(True))
+    animator.show_text(animator._animation.source_text)
+    animator.skip_typewriter()
+    animator.start_disappearing_text()
+    scheduler.update(0.31, 0.31)
+    assert animator._hidden_pending and animator._appearance.active
+    visual.clear()
+    animator.disappearance.duration = 0
+    animator.on_validate()
+    assert hidden == [True, True] and visual == [True]
+    assert not animator._hidden_pending and not scheduler._active
+    animator.on_validate()
+    assert hidden == [True, True] and visual == [True]
+    animator.appearance.duration = 0
+    animator.on_validate()
+    animator.play_appearance()
+    animator.play_appearance(False)
+    assert visual == [True, True, True] and not scheduler._active
 
 
 def test_character_callback_can_disable_the_component_without_stale_work(component):
@@ -190,7 +209,8 @@ def test_live_text_first_marker_pause_does_not_advance_the_new_appearance(compon
 
 
 @pytest.mark.parametrize("disable", [False, True])
-def test_hidden_callback_can_start_a_new_run_without_completing_its_visuals(component, disable):
+@pytest.mark.parametrize("finish", ["tick", "edit"])
+def test_hidden_callback_can_start_a_new_run_without_completing_its_visuals(component, disable, finish):
     animator, text, scheduler = component
     completed = []
     animator.on_enable()
@@ -198,7 +218,12 @@ def test_hidden_callback_can_start_a_new_run_without_completing_its_visuals(comp
     animator.on_text_disappeared.add_listener(animator.on_disable if disable else lambda: animator.show_text(animator._animation.source_text))
     animator.on_visual_complete.add_listener(lambda: completed.append(True))
     animator.start_disappearing_text()
-    scheduler.update(1, 1)
+    if finish == "edit":
+        scheduler.update(0.31, 0.31)
+        animator.disappearance.duration = 0
+        animator.on_validate()
+    else:
+        scheduler.update(1, 1)
     assert completed == []
     assert text.max_visible_characters == (2 if disable else 1)
     assert bool(scheduler._active) is not disable

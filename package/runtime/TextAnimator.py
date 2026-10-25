@@ -50,7 +50,7 @@ class TextPreset(SerializableObject):
 
 
 class TextAppearance(SerializableObject):
-    duration: float = serialized_field(default=0.25, range=(0.01, 10), display_name_key="text_animator.duration")
+    duration: float = serialized_field(default=0.25, range=(0, 10), display_name_key="text_animator.duration")
     offset = serialized_field(default=(0.0, 0.0), field_type=FieldType.VEC2, display_name_key="text_animator.offset")
     scale = serialized_field(default=(1.0, 1.0), field_type=FieldType.VEC2, display_name_key="text_animator.scale")
     rotation: float = serialized_field(default=0.0, display_name_key="text_animator.rotation")
@@ -451,6 +451,19 @@ class TextAnimator(InxComponent):
         self._mesh_refresh_requested = True
         self._schedule()
 
+    def _complete_appearance(self):
+        animation, appearance = self._animation, self._appearance
+        if self._hidden_pending:
+            self._hidden_pending = False
+            animation.text.max_visible_characters = 0
+            writer, generation = self._writer, self._writer._generation
+            self._emit(self.on_text_disappeared)
+            if (self._writer is not writer or writer._generation != generation
+                    or self._appearance is not appearance or appearance.active):
+                return False
+        self._emit(self.on_visual_complete)
+        return self._animation is animation
+
     def _tick(self, delta_time, unscaled_delta):
         delta = unscaled_delta if self.time_scale is TimeScale.UNSCALED else delta_time
         animation = self._animation
@@ -490,17 +503,8 @@ class TextAnimator(InxComponent):
             self._animation.update(delta)
         if self._appearance is not None and self._appearance.active:
             self._appearance.sample(max(self._appearance.time, appearance_clock+delta))
-            if not self._appearance.active:
-                if self._hidden_pending:
-                    self._hidden_pending = False
-                    self._animation.text.max_visible_characters = 0
-                    writer, generation = self._writer, self._writer._generation
-                    self._emit(self.on_text_disappeared)
-                    if self._writer is not writer or writer._generation != generation or self._appearance.active:
-                        return
-                self._emit(self.on_visual_complete)
-                if self._animation is not animation:
-                    return
+            if not self._appearance.active and not self._complete_appearance():
+                return
         if not self._writer.playing and not self._writer._finished and self._appearance is not None:
             self._writer._playback_clock = max(self._writer.playback_time, self._appearance.time)
         self._schedule()
@@ -511,6 +515,8 @@ class TextAnimator(InxComponent):
         if not isinstance(self.animation_loop, AnimationLoop):
             raise TypeError("Animation loop must be an AnimationLoop member")
         if self._animation is not None:
+            appearance = self._appearance
+            was_animating = appearance is not None and appearance.active
             layout = self._animation._layout
             source = self._animation.source_text
             self._animation.parse_tags = self.parse_tags
@@ -560,6 +566,9 @@ class TextAnimator(InxComponent):
             if self._hidden_pending and self._appearance is None:
                 self._hidden_pending = False
                 self._emit(self.on_text_disappeared)
+            elif was_animating and self._appearance is appearance and not appearance.active:
+                if not self._complete_appearance():
+                    return
             self._schedule()
 
     def on_disable(self):
@@ -918,6 +927,8 @@ class TextAnimator(InxComponent):
         self._appearance.play(showing, stagger=self.appearance_stagger if showing else self.disappearance_stagger)
         self._started_playback = True
         self._playing = True
+        if not self._appearance.active and not self._complete_appearance():
+            return
         self._schedule()
 
     def begin_preview(self, scope):

@@ -100,7 +100,9 @@ exit staggers and replaces the current typing pass. Typed characters instead
 follow the configured typing intervals. Mid-animation reversals start from each
 glyph's current offset, rotation, scale, alpha and vertices, even when the two
 profiles differ. Updating profiles preserves the current visuals and adjusts
-their remaining duration. Both phases use cubic-out easing.
+their remaining duration. Both phases use cubic-out easing. A nonpositive phase
+duration completes immediately, including when changed during playback; it does
+not leave a stagger delay or retain a partially transformed glyph.
 The component coordinates appearances with rate-adjusted typewriter timestamps;
 disappearing glyphs stay drawable until their animation finishes. Re-showing an
 active native layout preserves its currently drawable glyphs; a different layout

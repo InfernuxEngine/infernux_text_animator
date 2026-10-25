@@ -55,6 +55,17 @@ def test_appearance_staggers_from_rest_and_hides_without_touching_other_layers()
     assert not animator.active and np.all(animator.buffer.colors[:, :, 3] == 0)
     assert set(commits) == {TextGeometryLayer.Appearance}
     animator.reset()
+    for duration in (0.0, -0.25):
+        animator = CharacterAppearance(text, Appearance(duration=duration, offset=(0, 8), scale=(0, 0)),
+                                       Appearance(duration=duration, offset=(-5, 0)))
+        animator.play(stagger=0.25)
+        assert not animator.active
+        assert np.all(animator.buffer.colors[:, :, 3] == 1)
+        assert np.all(animator.buffer.offsets == 0) and np.all(animator.buffer.scales == 1)
+        animator.play(False, stagger=0.25)
+        assert not animator.active
+        assert np.all(animator.buffer.colors[:, :, 3] == 0)
+        assert np.all(animator.buffer.offsets == (-5, 0))
 
 
 def test_independent_phase_profiles_reverse_from_the_current_glyph_state_in_one_layer():
@@ -81,6 +92,16 @@ def test_independent_phase_profiles_reverse_from_the_current_glyph_state_in_one_
     assert animator.buffer.offsets == pytest.approx(np.tile((-5, 0), (4, 1)))
     assert np.allclose(animator.buffer.colors[:, :, 3], 0.2)
     assert not animator.active and set(commits) == {TextGeometryLayer.Appearance}
+    animator.set_visible(False).play(stagger=0).update(0.2)
+    assert animator.active
+    animator.set_appearance(Appearance(duration=0))
+    assert not animator.active and np.all(animator.buffer.colors[:, :, 3] == 1)
+    assert np.all(animator.buffer.offsets == 0) and np.all(animator.buffer.scales == 1)
+    animator.play(False, stagger=0).update(0.1)
+    assert animator.active
+    animator.set_appearances(animator.appearance, Appearance(duration=0, offset=(-5, 0)))
+    assert not animator.active and np.all(animator.buffer.colors[:, :, 3] == 0)
+    assert np.all(animator.buffer.offsets == (-5, 0))
 
 
 def test_named_custom_effect_runs_in_each_category_and_reverses_without_geometry_jump():
