@@ -12,6 +12,7 @@ from infernux.graph.ramp import AnimationCurve
 from infernux_text_animator import AnimationLoop, Appearance, AppearanceTag, CharacterAppearance, CharacterData, CurveTarget, CustomEffect, DefaultEffectsMode, Effect, EffectKind, TextAnimation, TimeScale, Typewriter, WaitInputMode
 from infernux.input import InputAction
 from infernux_text_animator.playback import scheduler, late_scheduler
+from infernux_text_animator.curves import default_effect_curve
 from infernux_text_animator.events import CharacterEvent, CharacterWaitEvent, MessageEvent, TextRegion
 from infernux_text_animator.events import TextStyle, TypewriterAction
 from infernux_text_animator.typewriter import TypingTimings
@@ -31,7 +32,7 @@ class TextEffect(SerializableObject):
     seed: int = serialized_field(default=0, display_name_key="text_animator.seed")
     color: list = serialized_field(default=[1.0, 0.25, 0.25, 1.0], field_type=FieldType.COLOR,
                                   display_name_key="text_animator.color")
-    curve: AnimationCurve = serialized_field(default=AnimationCurve(pre_wrap="repeat", post_wrap="repeat"),
+    curve: AnimationCurve = serialized_field(default=default_effect_curve(),
                                               field_type=FieldType.ANIMATION_CURVE, display_name_key="text_animator.curve",
                                               visible_when=lambda e: e.kind == EffectKind.CURVE)
     curve_target: CurveTarget = serialized_field(default=CurveTarget.OFFSET_Y, display_name_key="text_animator.curve_target",

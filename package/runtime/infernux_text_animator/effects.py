@@ -63,7 +63,8 @@ class Effect:
         if not isinstance(self.once, bool):
             raise TypeError("Effect once must be a bool")
         if self.kind == EffectKind.CURVE and self.curve is None:
-            object.__setattr__(self, "curve", AnimationCurve(pre_wrap="repeat", post_wrap="repeat"))
+            from .curves import default_effect_curve
+            object.__setattr__(self, "curve", default_effect_curve())
         if self.start < 0 or (self.end is not None and self.end < self.start):
             raise ValueError("Effect range must be ordered and nonnegative")
         if not all(np.isfinite(v) for v in (self.amplitude, self.speed, self.phase, self.phase_offset)):

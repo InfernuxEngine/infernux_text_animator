@@ -1,19 +1,27 @@
 """Vectorized Hermite sampling for character phases."""
 import numpy as np
+from infernux.graph.ramp import AnimationCurve, Keyframe
+
+
+def default_effect_curve():
+    return AnimationCurve((Keyframe(0, 0), Keyframe(1, 1)), pre_wrap="repeat", post_wrap="repeat")
 
 
 class CurveSampler:
     def __init__(self, curve):
-        self.times = np.asarray([key.time for key in curve.keys], dtype=np.float64)
-        self.values = np.asarray([key.value for key in curve.keys], dtype=np.float64)
+        keys = curve.keys
+        self.times = np.asarray([key.time for key in keys], dtype=np.float64)
+        self.values = np.asarray([key.value for key in keys], dtype=np.float64)
         self.pre_wrap, self.post_wrap = curve.pre_wrap, curve.post_wrap
         spans = np.diff(self.times)
-        outgoing = np.asarray([key.out_tangent for key in curve.keys[:-1]])*spans
-        incoming = np.asarray([key.in_tangent for key in curve.keys[1:]])*spans
+        outgoing = np.asarray([key.out_tangent for key in keys[:-1]])*spans
+        incoming = np.asarray([key.in_tangent for key in keys[1:]])*spans
         a, b = self.values[:-1], self.values[1:]
         self.coefficients = (2*a-2*b+outgoing+incoming, -3*a+3*b-2*outgoing-incoming, outgoing, a)
 
     def __call__(self, times):
+        if len(self.times) == 0:
+            return np.zeros_like(times)
         if len(self.times) == 1:
             return np.full_like(times, self.values[0])
         start, end = self.times[0], self.times[-1]
